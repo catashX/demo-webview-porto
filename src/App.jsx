@@ -17,10 +17,8 @@ function App() {
         .callHandler(handlerName, data)
         .then((result) => {
           console.log("Hasil dari Flutter:", result);
-
-          // Update UI sesuai handler
           if (handlerName === "getLocation") setLocation(result);
-          if (handlerName === "takePicture") setPicturePath(result.path);
+          if (handlerName === "takePicture") setPicturePath(result);
           if (handlerName === "toggleFlashlight") setFlashlightStatus(result.flashlight);
           if (handlerName === "getBatteryLevel") setBatteryLevel(result.level);
         })
@@ -41,7 +39,12 @@ function App() {
         </button>
         {picturePath && (
           <div>
-            <img src={`file://${picturePath}`} alt="Captured" style={{ width: "200px", marginTop: "10px" }} />
+            <img
+              key={picturePath}  // force React to treat it as a new image
+              src={picturePath}
+              alt="Captured"
+              style={{ width: "200px", marginTop: "10px" }}
+            />
           </div>
         )}
       </div>
