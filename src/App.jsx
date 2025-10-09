@@ -1,46 +1,101 @@
-import React, { useState } from "react";
-import './App.css';
+import React, { useEffect, useState } from "react";
+import "./App.css";
 
 function App() {
   const [location, setLocation] = useState(null);
   const [picturePath, setPicturePath] = useState(null);
   const [flashlightStatus, setFlashlightStatus] = useState(false);
   const [batteryLevel, setBatteryLevel] = useState(null);
+  const [env, setEnv] = useState("web");
 
-  if (!window.flutter_inappwebview) {
-    alert("Web ini hanya untuk di tes pada aplikasi porto portal App.");
-  }
-
-  const callFlutter = (handlerName, data) => {
+  // Detect environment
+  useEffect(() => {
     if (window.flutter_inappwebview) {
-      window.flutter_inappwebview
-        .callHandler(handlerName, data)
-        .then((result) => {
-          console.log("Hasil dari Flutter:", result);
-          if (handlerName === "getLocation") setLocation(result);
-          if (handlerName === "takePicture") setPicturePath(result);
-          if (handlerName === "toggleFlashlight") setFlashlightStatus(result.flashlight);
-          if (handlerName === "getBatteryLevel") setBatteryLevel(result.level);
-        })
-        .catch((err) => console.error(err));
+      setEnv("flutter");
+    } else if (window.lark) {
+      setEnv("lark");
     } else {
-      alert("Jalankan di Flutter WebView untuk tes JS Handler");
+      setEnv("web");
+      alert("Web ini hanya untuk di tes pada aplikasi Porto Portal App atau Lark.");
     }
+  }, []);
+
+  // Main handler — works for both Flutter & Lark
+  const callHandler = async (handlerName, data) => {
+    if (env === "flutter") {
+      // === Flutter WebView ===
+      try {
+        const result = await window.flutter_inappwebview.callHandler(handlerName, data);
+        console.log("Flutter result:", result);
+        handleResult(handlerName, result);
+      } catch (err) {
+        console.error(err);
+      }
+    } else if (env === "lark") {
+      // === Lark WebView ===
+      try {
+        switch (handlerName) {
+          case "getLocation":
+            const res = await window.lark.biz.geolocation.get({
+              accuracy: "high",
+              isNeedDetail: true,
+            });
+            const loc = { lat: res.latitude, lng: res.longitude };
+            handleResult(handlerName, loc);
+            break;
+
+          case "takePicture":
+            const photo = await window.lark.biz.util.chooseImage({
+              sourceType: ["camera", "album"],
+              count: 1,
+            });
+            handleResult(handlerName, photo.localIds?.[0] || "mock_photo_path");
+            break;
+
+          case "toggleFlashlight":
+            // Lark doesn’t support flashlight, so we just simulate it
+            const newFlash = !flashlightStatus;
+            handleResult(handlerName, { flashlight: newFlash });
+            break;
+
+          case "getBatteryLevel":
+            // Lark SDK doesn’t have this — simulate with random
+            const mockBattery = Math.floor(Math.random() * 100);
+            handleResult(handlerName, { level: mockBattery });
+            break;
+
+          default:
+            alert(`Handler ${handlerName} not implemented for Lark`);
+        }
+      } catch (err) {
+        console.error("Lark handler error:", err);
+      }
+    } else {
+      alert("Bukan di Flutter atau Lark.");
+    }
+  };
+
+  // Handle result (update states)
+  const handleResult = (handlerName, result) => {
+    if (handlerName === "getLocation") setLocation(result);
+    if (handlerName === "takePicture") setPicturePath(result);
+    if (handlerName === "toggleFlashlight") setFlashlightStatus(result.flashlight);
+    if (handlerName === "getBatteryLevel") setBatteryLevel(result.level);
   };
 
   return (
     <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
-      <div style={{ marginBottom: "25px" }}><h1>React → Flutter Demo</h1></div>
-
+      <h1>React → Flutter / Lark Demo</h1>
+      <p><strong>Environment:</strong> {env}</p>
 
       <div style={{ marginBottom: "15px" }}>
-        <button onClick={() => callFlutter("takePicture")} style={{ margin: "5px" }}>
+        <button onClick={() => callHandler("takePicture")} style={{ margin: "5px" }}>
           Ambil Gambar
         </button>
         {picturePath && (
           <div>
             <img
-              key={picturePath}  // force React to treat it as a new image
+              key={picturePath}
               src={picturePath}
               alt="Captured"
               style={{ width: "200px", marginTop: "10px" }}
@@ -50,13 +105,13 @@ function App() {
       </div>
 
       <div style={{ marginBottom: "15px" }}>
-        <button onClick={() => callFlutter("toggleFlashlight")} style={{ margin: "5px" }}>
+        <button onClick={() => callHandler("toggleFlashlight")} style={{ margin: "5px" }}>
           {flashlightStatus ? "Matikan Flashlight" : "Nyalakan Flashlight"}
         </button>
       </div>
 
       <div style={{ marginBottom: "15px" }}>
-        <button onClick={() => callFlutter("getLocation")} style={{ margin: "5px" }}>
+        <button onClick={() => callHandler("getLocation")} style={{ margin: "5px" }}>
           Ambil Lokasi
         </button>
         {location && (
@@ -67,7 +122,7 @@ function App() {
       </div>
 
       <div style={{ marginBottom: "15px" }}>
-        <button onClick={() => callFlutter("getBatteryLevel")} style={{ margin: "5px" }}>
+        <button onClick={() => callHandler("getBatteryLevel")} style={{ margin: "5px" }}>
           Ambil Battery
         </button>
         {batteryLevel !== null && <div>Battery: {batteryLevel}%</div>}
