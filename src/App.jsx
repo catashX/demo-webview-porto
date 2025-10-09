@@ -10,15 +10,25 @@ function App() {
 
   // Detect environment
   useEffect(() => {
-    if (window.flutter_inappwebview) {
-      setEnv("flutter");
-    } else if (window.lark) {
-      setEnv("lark");
-    } else {
-      setEnv("web");
-      alert("Web ini hanya untuk di tes pada aplikasi Porto Portal App atau Lark.");
-    }
+    const checkEnv = () => {
+      if (window.flutter_inappwebview) {
+        setEnv("flutter");
+      } else if (window.lark) {
+        window.lark.ready(() => {
+          console.log("✅ Lark SDK ready");
+          setEnv("lark");
+        });
+        window.lark.error((err) => console.error("❌ Lark SDK error:", err));
+      } else {
+        console.log("⏳ Lark SDK belum siap, cek lagi...");
+        setTimeout(checkEnv, 1000); // cek lagi 1 detik kemudian
+      }
+    };
+
+    checkEnv();
   }, []);
+
+
 
   // Main handler — works for both Flutter & Lark
   const callHandler = async (handlerName, data) => {

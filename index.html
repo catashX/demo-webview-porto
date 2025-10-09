@@ -1,14 +1,33 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>demo-webview-porto</title>
-    <script src="https://lf26-cdn-tos.bytecdntp.com/obj/lark/cdn/lark-sdk.js"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
+   <!doctype html>
+   <html lang="en">
+     <head>
+       <meta charset="UTF-8" />
+       <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+       <title>demo-webview-porto</title>
+       <!-- Opsional: Meta untuk Lark/hybrid app -->
+       <meta name="lark-app-id" content="your_app_id_here" /> <!-- Ganti dengan app ID dari Lark console jika butuh -->
+     </head>
+     <body>
+       <div id="root"></div>
+       <script type="module" src="/src/main.jsx"></script>
+       
+       <!-- Load Lark JS SDK di akhir body untuk non-blocking -->
+       <!-- <script async src="https://lf26-cdn-tos.bytecdntp.com/obj/lark-open/js-sdk-2.11.0.js"></script> -->
+       <script src="https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/lark-js-sdk/3.6.8/lark.js"></script>
+       <!-- Backup untuk Feishu/China (uncomment jika diperlukan): -->
+       <!-- <script async src="https://lf3-cdn-tos.bytescm.com/obj/ee-infra-open/open-platform/fe_sdk/js_sdk.js"></script> -->
+       
+       <!-- Opsional: Script untuk detect SDK load (untuk debug) -->
+       <script>
+         window.addEventListener('load', () => {
+           if (window.lark) {
+             console.log('✅ Lark SDK loaded successfully (version:', window.lark.version || 'unknown', ')');
+           } else {
+             console.error('❌ Lark SDK failed to load');
+           }
+         });
+       </script>
+     </body>
+   </html>
+   
