@@ -14,6 +14,11 @@ function App() {
     setLogs((prev) => [...prev, typeof message === 'object' ? JSON.stringify(message, null, 2) : message]);
   };
 
+  const error = (...args) => {
+    const message = args.map(a => (typeof a === "object" ? JSON.stringify(a, null, 2) : a)).join(" ");
+    setLogs(prev => [...prev, `❌ ${message}`]);
+  };
+
 
   // Detect environment
   useEffect(() => {
@@ -36,11 +41,9 @@ function App() {
   }, []);
 
 
-
   // Main handler — works for both Flutter & Lark
   const callHandler = async (handlerName, data) => {
     if (env === "flutter") {
-      // === Flutter WebView ===
       try {
         const result = await window.flutter_inappwebview.callHandler(handlerName, data);
         log("Flutter result:", result);
@@ -48,35 +51,48 @@ function App() {
       } catch (err) {
         error(err);
       }
-    } else if (env === "lark") {
+    } else if (env === "lark" && window.lark) {
       try {
         await window.lark.env.ready(); // Wait for SDK
 
         switch (handlerName) {
           case "getLocation":
-            const res = await tt.device.geolocation.get({
-              accuracy: "high",
-              isNeedDetail: true,
-            });
-            const loc = { lat: res.latitude, lng: res.longitude };
-            handleResult(handlerName, loc);
+            if (window.lark.device?.geolocation?.get) {
+              const res = await window.lark.device.geolocation.get({
+                accuracy: "high",
+                isNeedDetail: true,
+              });
+              const loc = { lat: res.latitude, lng: res.longitude };
+              log("getLocation result:", loc);
+              handleResult(handlerName, loc);
+            } else {
+              log("getLocation not supported in this environment");
+            }
             break;
 
           case "takePicture":
-            const photos = await tt.chooseImage({
-              sourceType: ["camera", "album"],
-              count: 1,
-            });
-            handleResult(handlerName, photos[0]?.url || "mock_photo_path");
+            if (window.lark?.biz?.util?.chooseImage) {
+              const photos = await window.lark.biz.util.chooseImage({
+                sourceType: ["camera", "album"],
+                count: 1,
+              });
+              log("takePicture result:", photos[0]?.url || "mock_photo_path");
+              handleResult(handlerName, photos[0]?.url || "mock_photo_path");
+            } else {
+              log("chooseImage not supported, returning mock path");
+              handleResult(handlerName, "mock_photo_path");
+            }
             break;
 
           case "toggleFlashlight":
             const newFlash = !flashlightStatus;
+            log("toggleFlashlight simulated:", newFlash);
             handleResult(handlerName, { flashlight: newFlash });
             break;
 
           case "getBatteryLevel":
             const mockBattery = Math.floor(Math.random() * 100);
+            log("getBatteryLevel simulated:", mockBattery);
             handleResult(handlerName, { level: mockBattery });
             break;
 
