@@ -53,7 +53,7 @@ function App() {
       }
     } else if (env === "lark" && window.lark) {
       try {
-        await window.lark.env.ready(); // Wait for SDK
+        // await window.lark.env.ready();
 
         switch (handlerName) {
           case "getLocation":
