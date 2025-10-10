@@ -57,11 +57,9 @@ function App() {
 
         switch (handlerName) {
           case "getLocation":
-            if (window.lark.device?.geolocation?.get) {
-              const res = await window.lark.device.geolocation.get({
+            if (window.lark?.getLocation) {
+              const res = await window.lark.getLocation.get({
                 accuracy: "high",
-                
-                // isNeedDetail: true,
               });
               const loc = { lat: res.latitude, lng: res.longitude };
               log("getLocation result:", loc);
