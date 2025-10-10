@@ -8,6 +8,13 @@ function App() {
   const [batteryLevel, setBatteryLevel] = useState(null);
   const [env, setEnv] = useState("web");
 
+  const [logs, setLogs] = useState([]);
+
+  const log = (message) => {
+    setLogs((prev) => [...prev, typeof message === 'object' ? JSON.stringify(message, null, 2) : message]);
+  };
+
+
   // Detect environment
   useEffect(() => {
     const checkEnv = () => {
@@ -15,12 +22,12 @@ function App() {
         setEnv("flutter");
       } else if (window.lark) {
         window.lark.ready(() => {
-          console.log("✅ Lark SDK ready");
+          log("✅ Lark SDK ready");
           setEnv("lark");
         });
-        window.lark.error((err) => console.error("❌ Lark SDK error:", err));
+        window.lark.error((err) => error("❌ Lark SDK error:", err));
       } else {
-        console.log("⏳ Lark SDK belum siap, cek lagi...");
+        log("⏳ Lark SDK belum siap, cek lagi...");
         setTimeout(checkEnv, 1000);
       }
     };
@@ -36,10 +43,10 @@ function App() {
       // === Flutter WebView ===
       try {
         const result = await window.flutter_inappwebview.callHandler(handlerName, data);
-        console.log("Flutter result:", result);
+        log("Flutter result:", result);
         handleResult(handlerName, result);
       } catch (err) {
-        console.error(err);
+        error(err);
       }
     } else if (env === "lark") {
       try {
@@ -77,7 +84,7 @@ function App() {
             alert(`Handler ${handlerName} not implemented for Lark`);
         }
       } catch (err) {
-        console.error("Lark handler error:", err);
+        error("Lark handler error:", err);
       }
     } else {
       alert("Bukan di Flutter atau Lark.");
@@ -136,6 +143,12 @@ function App() {
         </button>
         {batteryLevel !== null && <div>Battery: {batteryLevel}%</div>}
       </div>
+
+      <div style={{ marginTop: "20px", background: "#f0f0f0", padding: "10px", maxHeight: "200px", overflowY: "scroll" }}>
+        <h3>Debug Logs:</h3>
+        <pre>{logs.join("\n")}</pre>
+      </div>
+
     </div>
   );
 }
