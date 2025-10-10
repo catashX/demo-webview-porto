@@ -42,8 +42,9 @@ function App() {
         console.error(err);
       }
     } else if (env === "lark") {
-      // === Lark WebView ===
       try {
+        await window.lark.env.ready(); // Wait for SDK
+
         switch (handlerName) {
           case "getLocation":
             const res = await window.lark.biz.geolocation.get({
@@ -55,21 +56,19 @@ function App() {
             break;
 
           case "takePicture":
-            const photo = await window.lark.biz.util.chooseImage({
+            const photos = await window.lark.biz.util.chooseImage({
               sourceType: ["camera", "album"],
               count: 1,
             });
-            handleResult(handlerName, photo.localIds?.[0] || "mock_photo_path");
+            handleResult(handlerName, photos[0]?.url || "mock_photo_path");
             break;
 
           case "toggleFlashlight":
-            // Lark doesn’t support flashlight, so we just simulate it
             const newFlash = !flashlightStatus;
             handleResult(handlerName, { flashlight: newFlash });
             break;
 
           case "getBatteryLevel":
-            // Lark SDK doesn’t have this — simulate with random
             const mockBattery = Math.floor(Math.random() * 100);
             handleResult(handlerName, { level: mockBattery });
             break;
