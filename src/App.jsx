@@ -21,7 +21,7 @@ function App() {
         window.lark.error((err) => console.error("❌ Lark SDK error:", err));
       } else {
         console.log("⏳ Lark SDK belum siap, cek lagi...");
-        setTimeout(checkEnv, 1000); // cek lagi 1 detik kemudian
+        setTimeout(checkEnv, 1000);
       }
     };
 
