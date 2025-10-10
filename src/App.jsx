@@ -60,7 +60,8 @@ function App() {
             if (window.lark.device?.geolocation?.get) {
               const res = await window.lark.device.geolocation.get({
                 accuracy: "high",
-                isNeedDetail: true,
+                
+                // isNeedDetail: true,
               });
               const loc = { lat: res.latitude, lng: res.longitude };
               log("getLocation result:", loc);
@@ -71,8 +72,8 @@ function App() {
             break;
 
           case "takePicture":
-            if (window.lark?.biz?.util?.chooseImage) {
-              const photos = await window.lark.biz.util.chooseImage({
+            if (window.lark?.chooseImage) {
+              const photos = await window.lark.chooseImage({
                 sourceType: ["camera", "album"],
                 count: 1,
               });
