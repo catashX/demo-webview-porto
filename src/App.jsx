@@ -47,7 +47,7 @@ function App() {
 
         switch (handlerName) {
           case "getLocation":
-            const res = await window.lark.device.geolocation.get({
+            const res = await tt.device.geolocation.get({
               accuracy: "high",
               isNeedDetail: true,
             });
@@ -56,7 +56,7 @@ function App() {
             break;
 
           case "takePicture":
-            const photos = await window.lark.chooseImage({
+            const photos = await tt.chooseImage({
               sourceType: ["camera", "album"],
               count: 1,
             });
