@@ -49,65 +49,18 @@ function App() {
             log(`SDK version: ${window.tt.version}`);
           }
 
-          // Configure SDK with app credentials from backend
-          if (typeof window.tt.config === 'function') {
-            log("🔧 Fetching SDK config from backend...");
+          // This is a Mini Program SDK (not Web App SDK)
+          // Use tt.authorize() instead of tt.config()
+          log("ℹ️ Detected Mini Program SDK - using authorize() for permissions");
 
-            try {
-              // Fetch config from backend (NEVER put App Secret in frontend!)
-              // In production (Vercel), uses /api route
-              // In development, uses localhost:3001
-              const backendUrl = import.meta.env.PROD
-                ? '' // Relative path for Vercel serverless functions
-                : (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001');
+          // Set environment immediately since authorize happens per-API call
+          setEnv("lark");
 
-              const configUrl = `${backendUrl}/api/lark-config?url=${encodeURIComponent(window.location.href.split('#')[0])}`;
+          // No config needed - Mini Program handles auth differently
+          log("✅ Ready to use Mini Program APIs");
+          log("ℹ️ Permissions will be requested when you use camera/location");
 
-              log(`📡 Requesting config from: ${import.meta.env.PROD ? '/api/lark-config' : configUrl}`);
-
-              const configResponse = await fetch(configUrl);
-
-              if (!configResponse.ok) {
-                throw new Error(`Backend returned ${configResponse.status}`);
-              }
-
-              const config = await configResponse.json();
-              log("✅ Config received from backend");
-
-              window.tt.config({
-                appId: config.appId,
-                timestamp: config.timestamp,
-                nonceStr: config.nonceStr,
-                signature: config.signature,
-                jsApiList: ['getLocation', 'chooseImage', 'uploadImage', 'previewImage'],
-                onSuccess: (res) => {
-                  log("✅ SDK configured successfully!");
-                  log("✅ You can now use camera and location APIs");
-                  setEnv("lark");
-                },
-                onFail: (err) => {
-                  error("❌ SDK config failed:", JSON.stringify(err));
-                  error("This usually means:");
-                  error("1. Wrong App ID/Secret");
-                  error("2. URL not whitelisted in Lark console");
-                  error("3. Missing permissions in app settings");
-                  setEnv("lark"); // Continue anyway
-                }
-              });
-
-              return; // Don't continue to ready() - config will handle it
-
-            } catch (err) {
-              error("❌ Failed to fetch config from backend:", err.message);
-              error("Make sure:");
-              error("1. Backend server is running (npm run server)");
-              error("2. LARK_APP_ID and LARK_APP_SECRET are set");
-              error("3. Backend URL is correct");
-              log("⚠️ Continuing without config, APIs may not work");
-            }
-          } else {
-            log("⚠️ tt.config not available");
-          }
+          return; // Skip config check
 
           // Check if ready method exists
           if (typeof window.tt.ready === 'function') {
@@ -171,30 +124,56 @@ function App() {
       try {
         switch (handlerName) {
           case "getLocation":
-            window.tt.getLocation({
-              type: "gcj02", // or "wgs84"
-              success: (res) => {
-                const loc = { lat: res.latitude, lng: res.longitude };
-                log("getLocation result:", loc);
-                handleResult(handlerName, loc);
+            // Request location permission first
+            log("📍 Requesting location permission...");
+            window.tt.authorize({
+              scope: 'scope.userLocation',
+              success: () => {
+                log("✅ Location permission granted");
+                window.tt.getLocation({
+                  type: "gcj02",
+                  success: (res) => {
+                    const loc = { lat: res.latitude, lng: res.longitude };
+                    log("getLocation result:", loc);
+                    handleResult(handlerName, loc);
+                  },
+                  fail: (err) => {
+                    error("getLocation failed:", err);
+                  }
+                });
               },
               fail: (err) => {
-                error("getLocation failed:", err);
+                error("Location permission denied:", err);
+                log("💡 Opening settings to enable location permission...");
+                window.tt.openSetting();
               }
             });
             break;
 
           case "takePicture":
-            window.tt.chooseImage({
-              count: 1,
-              sourceType: ["camera", "album"],
-              success: (res) => {
-                const photoUrl = res.tempFilePaths?.[0] || res.apFilePaths?.[0] || "mock_photo_path";
-                log("takePicture result:", photoUrl);
-                handleResult(handlerName, photoUrl);
+            // Request camera/album permission first
+            log("📸 Requesting camera permission...");
+            window.tt.authorize({
+              scope: 'scope.camera',
+              success: () => {
+                log("✅ Camera permission granted");
+                window.tt.chooseImage({
+                  count: 1,
+                  sourceType: ["camera", "album"],
+                  success: (res) => {
+                    const photoUrl = res.tempFilePaths?.[0] || res.apFilePaths?.[0] || "mock_photo_path";
+                    log("takePicture result:", photoUrl);
+                    handleResult(handlerName, photoUrl);
+                  },
+                  fail: (err) => {
+                    error("chooseImage failed:", err);
+                  }
+                });
               },
               fail: (err) => {
-                error("chooseImage failed:", err);
+                error("Camera permission denied:", err);
+                log("💡 Opening settings to enable camera permission...");
+                window.tt.openSetting();
               }
             });
             break;
