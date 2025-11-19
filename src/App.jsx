@@ -124,56 +124,38 @@ function App() {
       try {
         switch (handlerName) {
           case "getLocation":
-            // Request location permission first
-            log("📍 Requesting location permission...");
-            window.tt.authorize({
-              scope: 'scope.userLocation',
-              success: () => {
-                log("✅ Location permission granted");
-                window.tt.getLocation({
-                  type: "gcj02",
-                  success: (res) => {
-                    const loc = { lat: res.latitude, lng: res.longitude };
-                    log("getLocation result:", loc);
-                    handleResult(handlerName, loc);
-                  },
-                  fail: (err) => {
-                    error("getLocation failed:", err);
-                  }
-                });
+            // Try direct API call (H5 apps may not support authorize)
+            log("📍 Calling getLocation directly...");
+            window.tt.getLocation({
+              type: "gcj02",
+              success: (res) => {
+                const loc = { lat: res.latitude, lng: res.longitude };
+                log("✅ getLocation success:", loc);
+                handleResult(handlerName, loc);
               },
               fail: (err) => {
-                error("Location permission denied:", err);
-                log("💡 Opening settings to enable location permission...");
-                window.tt.openSetting();
+                error("❌ getLocation failed:", err);
+                log("ℹ️ H5 apps may not have access to location API");
+                log("ℹ️ Consider using a Mini Program instead");
               }
             });
             break;
 
           case "takePicture":
-            // Request camera/album permission first
-            log("📸 Requesting camera permission...");
-            window.tt.authorize({
-              scope: 'scope.camera',
-              success: () => {
-                log("✅ Camera permission granted");
-                window.tt.chooseImage({
-                  count: 1,
-                  sourceType: ["camera", "album"],
-                  success: (res) => {
-                    const photoUrl = res.tempFilePaths?.[0] || res.apFilePaths?.[0] || "mock_photo_path";
-                    log("takePicture result:", photoUrl);
-                    handleResult(handlerName, photoUrl);
-                  },
-                  fail: (err) => {
-                    error("chooseImage failed:", err);
-                  }
-                });
+            // Try direct API call (H5 apps may not support authorize)
+            log("📸 Calling chooseImage directly...");
+            window.tt.chooseImage({
+              count: 1,
+              sourceType: ["camera", "album"],
+              success: (res) => {
+                const photoUrl = res.tempFilePaths?.[0] || res.apFilePaths?.[0] || "mock_photo_path";
+                log("✅ chooseImage success:", photoUrl);
+                handleResult(handlerName, photoUrl);
               },
               fail: (err) => {
-                error("Camera permission denied:", err);
-                log("💡 Opening settings to enable camera permission...");
-                window.tt.openSetting();
+                error("❌ chooseImage failed:", err);
+                log("ℹ️ H5 apps may not have access to camera API");
+                log("ℹ️ Consider using a Mini Program instead");
               }
             });
             break;
