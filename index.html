@@ -22,8 +22,13 @@
   <script type="module" src="/src/main.jsx"></script>
 
   <!-- Load Lark JS SDK di akhir body untuk non-blocking -->
-  <!-- <script async src="https://lf26-cdn-tos.bytecdntp.com/obj/lark-open/js-sdk-2.11.0.js"></script> -->
-  <script async defer type="text/javascript" src="https://lf-scm-cn.feishucdn.com/lark/op/h5-js-sdk-1.5.44.js"></script>
+  <!-- Trying JSSDK instead of H5 SDK for better tt.config support -->
+  <script async defer type="text/javascript"
+    src="https://sf16-scmcdn-va.ibytedtos.com/goofy/lark/op/h5-js-sdk-1.5.16.js"></script>
+
+  <!-- Alternative: New version JSSDK (try this if above doesn't work) -->
+  <!-- <script async defer src="https://lf1-cdn-tos.bytegoofy.com/goofy/lark/op/h5-js-sdk-1.5.21.js"></script> -->
+
   <!-- Backup untuk Feishu/China (uncomment jika diperlukan): -->
   <!-- <script async src="https://lf3-cdn-tos.bytescm.com/obj/ee-infra-open/open-platform/fe_sdk/js_sdk.js"></script> -->
 

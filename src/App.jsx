@@ -40,6 +40,15 @@ function App() {
         if (window.tt && typeof window.tt === 'object') {
           log("✅ Feishu SDK (tt) object found");
 
+          // Log available methods for debugging
+          const availableMethods = Object.keys(window.tt).filter(key => typeof window.tt[key] === 'function');
+          log(`Available SDK methods: ${availableMethods.join(', ')}`);
+
+          // Check SDK version
+          if (window.tt.version) {
+            log(`SDK version: ${window.tt.version}`);
+          }
+
           // Configure SDK with app credentials from backend
           if (typeof window.tt.config === 'function') {
             log("🔧 Fetching SDK config from backend...");
