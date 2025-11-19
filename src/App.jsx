@@ -8,6 +8,12 @@ function App() {
   const [batteryLevel, setBatteryLevel] = useState(null);
   const [env, setEnv] = useState(null);
 
+  // Lark-specific states
+  const [userProfile, setUserProfile] = useState(null);
+  const [qrCodeResult, setQrCodeResult] = useState(null);
+  const [selectedContacts, setSelectedContacts] = useState(null);
+  const [chatInfo, setChatInfo] = useState(null);
+
   const [logs, setLogs] = useState([]);
 
   const log = (message) => {
@@ -193,6 +199,91 @@ function App() {
             }
             break;
 
+          // Lark-exclusive APIs (impossible in normal browsers!)
+          case "getUserProfile":
+            log("👤 Getting Lark user profile...");
+            window.tt.getUserInfo({
+              success: (res) => {
+                log("✅ User info received:", res);
+                const userInfo = {
+                  name: res.userInfo?.nickName || "Unknown",
+                  avatarUrl: res.userInfo?.avatarUrl || "",
+                  openId: res.userInfo?.openId || ""
+                };
+                handleResult(handlerName, userInfo);
+              },
+              fail: (err) => {
+                error("❌ Failed to get user info:", err);
+              }
+            });
+            break;
+
+          case "chooseContact":
+            log("👥 Opening Lark contact picker...");
+            window.tt.chooseContact({
+              selectedLimit: 5, // Allow selecting up to 5 contacts
+              success: (res) => {
+                log("✅ Contacts selected:", res);
+                const contacts = res.users?.map(u => ({
+                  name: u.name || "Unknown",
+                  openId: u.openId,
+                  avatar: u.avatar
+                })) || [];
+                handleResult(handlerName, { contacts });
+              },
+              fail: (err) => {
+                error("❌ Failed to choose contact:", err);
+              }
+            });
+            break;
+
+          case "scanQRCode":
+            log("📷 Opening Lark QR scanner...");
+            window.tt.scanCode({
+              onlyFromCamera: true,
+              scanType: ["qrCode", "barCode"],
+              success: (res) => {
+                log("✅ QR Code scanned:", res.result);
+                handleResult(handlerName, { code: res.result });
+              },
+              fail: (err) => {
+                error("❌ Scan failed:", err);
+              }
+            });
+            break;
+
+          case "getChatInfo":
+            log("💬 Getting current chat/bot context...");
+            window.tt.getChatInfo({
+              success: (res) => {
+                log("✅ Chat info received:", res);
+                const chatInfo = {
+                  chatId: res.chatId || "N/A",
+                  chatType: res.chatType || "Unknown",
+                  chatName: res.chatName || "Unknown"
+                };
+                handleResult(handlerName, chatInfo);
+              },
+              fail: (err) => {
+                error("❌ Failed to get chat info:", err);
+                log("ℹ️ This only works when opened from a Lark chat/bot");
+              }
+            });
+            break;
+
+          case "showToast":
+            log("🔔 Showing Lark native toast...");
+            window.tt.showToast({
+              title: data?.message || "Hello from Lark! 🎉",
+              icon: "success",
+              duration: 2000,
+              success: () => {
+                log("✅ Toast shown");
+                handleResult(handlerName, { shown: true });
+              }
+            });
+            break;
+
           default:
             alert(`Handler ${handlerName} not implemented for Lark`);
         }
@@ -210,6 +301,10 @@ function App() {
     if (handlerName === "takePicture") setPicturePath(result);
     if (handlerName === "toggleFlashlight") setFlashlightStatus(result.flashlight);
     if (handlerName === "getBatteryLevel") setBatteryLevel(result.level);
+    if (handlerName === "getUserProfile") setUserProfile(result);
+    if (handlerName === "scanQRCode") setQrCodeResult(result.code);
+    if (handlerName === "chooseContact") setSelectedContacts(result.contacts);
+    if (handlerName === "getChatInfo") setChatInfo(result);
   };
 
   return (
@@ -288,6 +383,99 @@ function App() {
         </button>
         {batteryLevel !== null && <div>Battery: {batteryLevel}%</div>}
       </div>
+
+      {/* Lark-exclusive features */}
+      {env === "lark" && (
+        <>
+          <hr style={{ margin: "20px 0" }} />
+          <h2>🎯 Lark-Exclusive Features</h2>
+          <p style={{ fontSize: "14px", color: "#666", marginBottom: "15px" }}>
+            These APIs are impossible in normal browsers! 🚀
+          </p>
+
+          <div style={{ marginBottom: "15px" }}>
+            <button onClick={() => callHandler("getUserProfile")} style={{ margin: "5px" }}>
+              👤 Get Lark User Profile
+            </button>
+            {userProfile && (
+              <div style={{ marginTop: "10px", padding: "10px", background: "#f5f5f5", borderRadius: "5px" }}>
+                {userProfile.avatarUrl && (
+                  <img src={userProfile.avatarUrl} alt="Avatar" style={{ width: "50px", borderRadius: "25px", marginRight: "10px" }} />
+                )}
+                <div>
+                  <strong>Name:</strong> {userProfile.name}
+                </div>
+                <div style={{ fontSize: "12px", color: "#666" }}>
+                  <strong>OpenID:</strong> {userProfile.openId}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginBottom: "15px" }}>
+            <button onClick={() => callHandler("chooseContact")} style={{ margin: "5px" }}>
+              👥 Choose Lark Contacts (up to 5)
+            </button>
+            <div style={{ fontSize: "12px", color: "#888", marginTop: "5px" }}>
+              Opens Lark's native contact picker
+            </div>
+            {selectedContacts && selectedContacts.length > 0 && (
+              <div style={{ marginTop: "10px", padding: "10px", background: "#e3f2fd", borderRadius: "5px" }}>
+                <strong>Selected {selectedContacts.length} contact(s):</strong>
+                {selectedContacts.map((contact, idx) => (
+                  <div key={idx} style={{ marginTop: "5px", padding: "5px", background: "white", borderRadius: "3px" }}>
+                    {contact.avatar && <img src={contact.avatar} alt="" style={{ width: "30px", borderRadius: "15px", marginRight: "8px" }} />}
+                    <span>{contact.name}</span>
+                    <span style={{ fontSize: "11px", color: "#999", marginLeft: "8px" }}>({contact.openId})</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginBottom: "15px" }}>
+            <button onClick={() => callHandler("scanQRCode")} style={{ margin: "5px" }}>
+              📷 Scan QR/Barcode
+            </button>
+            <div style={{ fontSize: "12px", color: "#888", marginTop: "5px" }}>
+              Uses Lark's native scanner
+            </div>
+            {qrCodeResult && (
+              <div style={{ marginTop: "10px", padding: "10px", background: "#e8f5e9", borderRadius: "5px" }}>
+                <strong>Scanned:</strong> {qrCodeResult}
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginBottom: "15px" }}>
+            <button onClick={() => callHandler("getChatInfo")} style={{ margin: "5px" }}>
+              💬 Get Current Chat Info
+            </button>
+            <div style={{ fontSize: "12px", color: "#888", marginTop: "5px" }}>
+              Only works when opened from a Lark chat/bot
+            </div>
+            {chatInfo && (
+              <div style={{ marginTop: "10px", padding: "10px", background: "#fff3e0", borderRadius: "5px" }}>
+                <div><strong>Chat ID:</strong> {chatInfo.chatId}</div>
+                <div><strong>Type:</strong> {chatInfo.chatType}</div>
+                <div><strong>Name:</strong> {chatInfo.chatName}</div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginBottom: "15px" }}>
+            <button
+              onClick={() => callHandler("showToast", { message: "Lark Native Toast! 🎉" })}
+              style={{ margin: "5px" }}
+            >
+              🔔 Show Lark Toast
+            </button>
+            <div style={{ fontSize: "12px", color: "#888", marginTop: "5px" }}>
+              Native Lark UI notification
+            </div>
+          </div>
+        </>
+      )}
 
     </div>
   );
