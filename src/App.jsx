@@ -133,7 +133,7 @@ function App() {
     log(" Calling tt.requestAuthCode() ...");
 
     window.tt.requestAuthCode({
-      appId: "cli_a7d8a6e6860c300d", // Your App ID
+      appId: process.env.LARK_APP_ID,
       success: (res) => {
         log(`✅ Got REAL auth code: ${res.code}`);
         setAuthCode(res.code);
