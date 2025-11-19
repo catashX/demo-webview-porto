@@ -120,33 +120,38 @@ function App() {
     };
   }, []);
 
-  // Demo: Simulate Lark Authentication (hardcoded)
-  const simulateLarkAuth = () => {
-    log("🔑 [DEMO] Simulating Lark authentication...");
-    log("📡 Calling tt.requestAuthCode() ...");
+  // Real Lark Authentication
+  const loginWithRealLark = () => {
+    log("🔑 Starting real Lark authentication...");
 
-    // Simulate getting auth code
-    setTimeout(() => {
-      const mockAuthCode = "mock_auth_code_" + Date.now();
-      log(`✅ Got auth code: ${mockAuthCode}`);
+    if (!window.tt || !window.tt.requestAuthCode) {
+      error("❌ window.tt.requestAuthCode not available");
+      log("ℹ️ Are you running inside Lark?");
+      return;
+    }
 
-      log("📤 Sending code to backend...");
+    log(" Calling tt.requestAuthCode() ...");
 
-      // Simulate backend exchange for user info
-      setTimeout(() => {
-        const mockLarkUser = {
-          user_id: "ou_7d8a6e6860c3102433b85060ebbbfe0d",
-          name: "John Doe",
-          email: "john.doe@company.com",
-          avatar: "https://via.placeholder.com/100",
-          mobile: "+1234567890"
-        };
+    window.tt.requestAuthCode({
+      appId: "cli_a7d8a6e6860c300d", // Your App ID
+      success: (res) => {
+        log(`✅ Got REAL auth code: ${res.code}`);
+        setAuthCode(res.code);
 
-        log("✅ Backend returned user info:", mockLarkUser);
-        log("🔗 Linking Lark account to company database...");
+        log("⏳ Simulating backend exchange...");
 
-        // Simulate database linking
+        // Simulate backend processing the real code
         setTimeout(() => {
+          const mockLarkUser = {
+            user_id: "ou_real_code_exchanged_" + res.code.substring(0, 6),
+            name: "John Doe (Mock)",
+            email: "john.doe@company.com",
+            avatar: "https://via.placeholder.com/100",
+            mobile: "+1234567890"
+          };
+
+          log("✅ Backend verified code & returned user:", mockLarkUser);
+
           const companyUser = {
             id: 12345,
             company_email: mockLarkUser.email,
@@ -156,11 +161,7 @@ function App() {
             linked_at: new Date().toISOString()
           };
 
-          log("✅ Account linked successfully!");
-          log("📝 Company account ID: " + companyUser.id);
-          log("🎉 User authenticated and logged in!");
-
-          // Set authenticated state
+          // Mark as authenticated with mock data
           setIsAuthenticated(true);
           setCompanyAccount(companyUser);
           setUserProfile({
@@ -169,9 +170,14 @@ function App() {
             openId: mockLarkUser.user_id
           });
 
-        }, 800);
-      }, 1000);
-    }, 600);
+          log("🎉 Login complete!");
+        }, 1000);
+      },
+      fail: (err) => {
+        error("❌ Auth failed:", err);
+        log("ℹ️ Make sure your app is trusted in Lark Console");
+      }
+    });
   };
 
 
@@ -432,7 +438,7 @@ function App() {
                     🔐 <strong>Not Authenticated</strong>
                   </div>
                   <button
-                    onClick={simulateLarkAuth}
+                    onClick={loginWithRealLark}
                     style={{
                       padding: "10px 20px",
                       fontSize: "16px",
@@ -443,10 +449,10 @@ function App() {
                       cursor: "pointer"
                     }}
                   >
-                    🔑 Login with Lark (Demo)
+                    🔑 Login with Lark (Real)
                   </button>
                   <div style={{ fontSize: "12px", color: "#666", marginTop: "8px" }}>
-                    Click to simulate Lark SSO authentication
+                    Calls window.tt.requestAuthCode()
                   </div>
                 </>
               )}
