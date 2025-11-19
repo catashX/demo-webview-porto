@@ -11,12 +11,15 @@
 </head>
 
 <body>
+  <script>
+    console.log('🟢 HTML loaded, React mounting...');
+  </script>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 
   <!-- Load Lark JS SDK di akhir body untuk non-blocking -->
   <!-- <script async src="https://lf26-cdn-tos.bytecdntp.com/obj/lark-open/js-sdk-2.11.0.js"></script> -->
-  <script type="text/javascript" src="https://lf-scm-cn.feishucdn.com/lark/op/h5-js-sdk-1.5.44.js"></script>
+  <script async defer type="text/javascript" src="https://lf-scm-cn.feishucdn.com/lark/op/h5-js-sdk-1.5.44.js"></script>
   <!-- Backup untuk Feishu/China (uncomment jika diperlukan): -->
   <!-- <script async src="https://lf3-cdn-tos.bytescm.com/obj/ee-infra-open/open-platform/fe_sdk/js_sdk.js"></script> -->
 
