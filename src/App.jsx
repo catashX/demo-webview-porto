@@ -130,10 +130,12 @@ function App() {
       return;
     }
 
+    log(`Current URL: ${window.location.href}`);
     log(" Calling tt.requestAuthCode() ...");
 
     window.tt.requestAuthCode({
       appId: import.meta.env.VITE_LARK_APP_ID,
+      redirect_uri: window.location.href,
       success: (res) => {
         log(`✅ Got REAL auth code: ${res.code}`);
         setAuthCode(res.code);
