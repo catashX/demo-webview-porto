@@ -6,7 +6,7 @@ function App() {
   const [picturePath, setPicturePath] = useState(null);
   const [flashlightStatus, setFlashlightStatus] = useState(false);
   const [batteryLevel, setBatteryLevel] = useState(null);
-  const [env, setEnv] = useState("web");
+  const [env, setEnv] = useState(null);
 
   const [logs, setLogs] = useState([]);
 
@@ -22,7 +22,12 @@ function App() {
 
   // Detect environment
   useEffect(() => {
+    let attempts = 0;
+    const maxAttempts = 10; // 5 seconds total (10 * 500ms)
+
     const checkEnv = () => {
+      attempts++;
+
       if (window.flutter_inappwebview) {
         setEnv("flutter");
         log("✅ Flutter environment detected");
@@ -32,9 +37,15 @@ function App() {
           log("✅ Feishu SDK (tt) ready");
           setEnv("lark");
         });
-        window.tt.error((err) => error("❌ Feishu SDK error:", err));
+        window.tt.error((err) => {
+          error("❌ Feishu SDK error:", err);
+          setEnv("web"); // Fallback to web on error
+        });
+      } else if (attempts >= maxAttempts) {
+        log("⏱️ SDK detection timeout, defaulting to web environment");
+        setEnv("web");
       } else {
-        log("⏳ SDK belum siap, cek lagi...");
+        log(`⏳ SDK belum siap, cek lagi... (${attempts}/${maxAttempts})`);
         setTimeout(checkEnv, 500);
       }
     };
@@ -119,7 +130,19 @@ function App() {
   return (
     <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
       <h1>React → Flutter / Lark Demo</h1>
-      <p><strong>Environment:</strong> {env}</p>
+
+      {env === null ? (
+        <div>
+          <p>🔍 Detecting environment...</p>
+          <p style={{ fontSize: "12px", color: "#666" }}>
+            If this message persists, check the debug logs below.
+          </p>
+        </div>
+      ) : (
+        <>
+          <p><strong>Environment:</strong> {env}</p>
+        </>
+      )}
 
       <div style={{ marginBottom: "15px" }}>
         <button onClick={() => callHandler("takePicture")} style={{ margin: "5px" }}>
