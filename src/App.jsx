@@ -25,15 +25,17 @@ function App() {
     const checkEnv = () => {
       if (window.flutter_inappwebview) {
         setEnv("flutter");
-      } else if (window.lark) {
-        window.lark.ready(() => {
-          log("✅ Lark SDK ready");
+        log("✅ Flutter environment detected");
+      } else if (window.tt) {
+        // Feishu SDK exposes as 'tt' object
+        window.tt.ready(() => {
+          log("✅ Feishu SDK (tt) ready");
           setEnv("lark");
         });
-        window.lark.error((err) => error("❌ Lark SDK error:", err));
+        window.tt.error((err) => error("❌ Feishu SDK error:", err));
       } else {
-        log("⏳ Lark SDK belum siap, cek lagi...");
-        setTimeout(checkEnv, 1000);
+        log("⏳ SDK belum siap, cek lagi...");
+        setTimeout(checkEnv, 500);
       }
     };
 
@@ -51,36 +53,36 @@ function App() {
       } catch (err) {
         error(err);
       }
-    } else if (env === "lark" && window.lark) {
+    } else if (env === "lark" && window.tt) {
       try {
-        // await window.lark.env.ready();
-
         switch (handlerName) {
           case "getLocation":
-            if (window.lark?.getLocation) {
-              const res = await window.lark.getLocation.get({
-                accuracy: "high",
-              });
-              const loc = { lat: res.latitude, lng: res.longitude };
-              log("getLocation result:", loc);
-              handleResult(handlerName, loc);
-            } else {
-              log("getLocation not supported in this environment");
-            }
+            window.tt.getLocation({
+              type: "gcj02", // or "wgs84"
+              success: (res) => {
+                const loc = { lat: res.latitude, lng: res.longitude };
+                log("getLocation result:", loc);
+                handleResult(handlerName, loc);
+              },
+              fail: (err) => {
+                error("getLocation failed:", err);
+              }
+            });
             break;
 
           case "takePicture":
-            if (window.lark?.chooseImage) {
-              const photos = await window.lark.chooseImage({
-                sourceType: ["camera", "album"],
-                count: 1,
-              });
-              log("takePicture result:", photos[0]?.url || "mock_photo_path");
-              handleResult(handlerName, photos[0]?.url || "mock_photo_path");
-            } else {
-              log("chooseImage not supported, returning mock path");
-              handleResult(handlerName, "mock_photo_path");
-            }
+            window.tt.chooseImage({
+              count: 1,
+              sourceType: ["camera", "album"],
+              success: (res) => {
+                const photoUrl = res.tempFilePaths?.[0] || res.apFilePaths?.[0] || "mock_photo_path";
+                log("takePicture result:", photoUrl);
+                handleResult(handlerName, photoUrl);
+              },
+              fail: (err) => {
+                error("chooseImage failed:", err);
+              }
+            });
             break;
 
           case "toggleFlashlight":

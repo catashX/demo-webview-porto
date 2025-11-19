@@ -23,10 +23,13 @@
   <!-- Opsional: Script untuk detect SDK load (untuk debug) -->
   <script>
     window.addEventListener('load', () => {
-      if (window.lark) {
-        console.log('✅ Lark SDK loaded successfully (version:', window.lark.version || 'unknown', ')');
+      if (window.tt) {
+        console.log('✅ Feishu SDK (tt) loaded successfully');
+        console.log('Available methods:', Object.keys(window.tt));
+      } else if (window.h5sdk) {
+        console.log('✅ Lark SDK (h5sdk) loaded successfully');
       } else {
-        console.error('❌ Lark SDK failed to load');
+        console.error('❌ SDK failed to load (neither tt nor h5sdk found)');
       }
     });
   </script>
