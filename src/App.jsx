@@ -21,13 +21,33 @@ function App() {
 
   const [logs, setLogs] = useState([]);
 
-  const log = (message) => {
-    setLogs((prev) => [...prev, typeof message === 'object' ? JSON.stringify(message, null, 2) : message]);
+  const addLog = (content, type = 'info') => {
+    setLogs(prev => [...prev, {
+      id: Date.now() + Math.random(),
+      timestamp: new Date().toLocaleTimeString(),
+      type,
+      content
+    }]);
+  };
+
+  const log = (message, data = null) => {
+    let type = 'info';
+    if (typeof message === 'string') {
+      if (message.includes('✅')) type = 'success';
+      if (message.includes('❌')) type = 'error';
+      if (message.includes('⚠️')) type = 'warning';
+    }
+
+    if (data) {
+      addLog({ message, data }, type);
+    } else {
+      addLog(message, type);
+    }
   };
 
   const error = (...args) => {
     const message = args.map(a => (typeof a === "object" ? JSON.stringify(a, null, 2) : a)).join(" ");
-    setLogs(prev => [...prev, `❌ ${message}`]);
+    addLog(message, 'error');
   };
 
 
@@ -464,23 +484,89 @@ function App() {
       )}
 
       {/* Debug logs at the top for visibility */}
+      {/* Debug logs at the top for visibility */}
       <div style={{
         marginTop: "15px",
         marginBottom: "20px",
         background: "#1e1e1e",
-        color: "#0f0",
-        padding: "10px",
-        maxHeight: "300px",
-        overflowY: "scroll",
-        border: "2px solid #0f0",
-        borderRadius: "4px",
-        fontFamily: "monospace",
-        fontSize: "11px"
+        borderRadius: "8px",
+        overflow: "hidden",
+        border: "1px solid #333",
+        boxShadow: "0 4px 6px rgba(0,0,0,0.3)"
       }}>
-        <h3 style={{ color: "#0f0", margin: "0 0 10px 0" }}>🐛 Debug Logs:</h3>
-        <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordWrap: "break-word" }}>
-          {logs.length === 0 ? "No logs yet..." : logs.join("\n")}
-        </pre>
+        <div style={{
+          padding: "10px 15px",
+          background: "#2d2d2d",
+          borderBottom: "1px solid #333",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}>
+          <h3 style={{ color: "#fff", margin: 0, fontSize: "14px" }}>🐛 Debug Logs</h3>
+          <button
+            onClick={() => setLogs([])}
+            style={{
+              background: "transparent",
+              border: "1px solid #666",
+              color: "#aaa",
+              borderRadius: "4px",
+              padding: "2px 8px",
+              fontSize: "11px",
+              cursor: "pointer"
+            }}
+          >
+            Clear
+          </button>
+        </div>
+
+        <div style={{
+          maxHeight: "400px",
+          overflowY: "auto",
+          padding: "10px",
+          fontFamily: "Monaco, Consolas, monospace",
+          fontSize: "12px"
+        }}>
+          {logs.length === 0 ? (
+            <div style={{ color: "#666", textAlign: "center", padding: "20px" }}>
+              No logs yet...
+            </div>
+          ) : (
+            logs.map((log) => (
+              <div key={log.id} style={{
+                marginBottom: "8px",
+                borderBottom: "1px solid #333",
+                paddingBottom: "8px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ color: "#666", fontSize: "10px" }}>[{log.timestamp}]</span>
+                  {log.type === 'error' && <span style={{ color: "#ff5252", fontWeight: "bold" }}>ERROR</span>}
+                  {log.type === 'success' && <span style={{ color: "#69f0ae", fontWeight: "bold" }}>SUCCESS</span>}
+                  {log.type === 'warning' && <span style={{ color: "#ffd740", fontWeight: "bold" }}>WARN</span>}
+                </div>
+
+                <div style={{
+                  color: log.type === 'error' ? '#ff8a80' :
+                    log.type === 'success' ? '#b9f6ca' :
+                      log.type === 'warning' ? '#ffe57f' : '#e0e0e0',
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  paddingLeft: "10px"
+                }}>
+                  {typeof log.content === 'object' ? (
+                    <pre style={{ margin: 0, background: "#00000030", padding: "8px", borderRadius: "4px" }}>
+                      {JSON.stringify(log.content, null, 2)}
+                    </pre>
+                  ) : (
+                    log.content
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       <div style={{ marginBottom: "15px" }}>
