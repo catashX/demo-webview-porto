@@ -13,6 +13,11 @@ function App() {
   const [qrCodeResult, setQrCodeResult] = useState(null);
   const [selectedContacts, setSelectedContacts] = useState(null);
   const [chatInfo, setChatInfo] = useState(null);
+  const [authCode, setAuthCode] = useState(null);
+
+  // Auth demo state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [companyAccount, setCompanyAccount] = useState(null);
 
   const [logs, setLogs] = useState([]);
 
@@ -114,6 +119,60 @@ function App() {
       }
     };
   }, []);
+
+  // Demo: Simulate Lark Authentication (hardcoded)
+  const simulateLarkAuth = () => {
+    log("🔑 [DEMO] Simulating Lark authentication...");
+    log("📡 Calling tt.requestAuthCode() ...");
+
+    // Simulate getting auth code
+    setTimeout(() => {
+      const mockAuthCode = "mock_auth_code_" + Date.now();
+      log(`✅ Got auth code: ${mockAuthCode}`);
+
+      log("📤 Sending code to backend...");
+
+      // Simulate backend exchange for user info
+      setTimeout(() => {
+        const mockLarkUser = {
+          user_id: "ou_7d8a6e6860c3102433b85060ebbbfe0d",
+          name: "John Doe",
+          email: "john.doe@company.com",
+          avatar: "https://via.placeholder.com/100",
+          mobile: "+1234567890"
+        };
+
+        log("✅ Backend returned user info:", mockLarkUser);
+        log("🔗 Linking Lark account to company database...");
+
+        // Simulate database linking
+        setTimeout(() => {
+          const companyUser = {
+            id: 12345,
+            company_email: mockLarkUser.email,
+            lark_user_id: mockLarkUser.user_id,
+            lark_name: mockLarkUser.name,
+            lark_avatar: mockLarkUser.avatar,
+            linked_at: new Date().toISOString()
+          };
+
+          log("✅ Account linked successfully!");
+          log("📝 Company account ID: " + companyUser.id);
+          log("🎉 User authenticated and logged in!");
+
+          // Set authenticated state
+          setIsAuthenticated(true);
+          setCompanyAccount(companyUser);
+          setUserProfile({
+            name: mockLarkUser.name,
+            avatarUrl: mockLarkUser.avatar,
+            openId: mockLarkUser.user_id
+          });
+
+        }, 800);
+      }, 1000);
+    }, 600);
+  };
 
 
   // Main handler — works for both Flutter & Lark
@@ -284,6 +343,25 @@ function App() {
             });
             break;
 
+          case "requestAuthCode":
+            log("🔑 Calling real window.tt.requestAuthCode...");
+            if (window.tt.requestAuthCode) {
+              window.tt.requestAuthCode({
+                appId: "cli_a7d8a6e6860c300d", // Optional: Try passing your App ID if needed
+                success: (res) => {
+                  log("✅ Auth Code received:", res.code);
+                  handleResult(handlerName, { code: res.code });
+                },
+                fail: (err) => {
+                  error("❌ requestAuthCode failed:", err);
+                  log("ℹ️ This API usually requires Mini Program or specific H5 permissions");
+                }
+              });
+            } else {
+              error("❌ window.tt.requestAuthCode is not a function");
+            }
+            break;
+
           default:
             alert(`Handler ${handlerName} not implemented for Lark`);
         }
@@ -305,6 +383,7 @@ function App() {
     if (handlerName === "scanQRCode") setQrCodeResult(result.code);
     if (handlerName === "chooseContact") setSelectedContacts(result.contacts);
     if (handlerName === "getChatInfo") setChatInfo(result);
+    if (handlerName === "requestAuthCode") setAuthCode(result.code);
   };
 
   return (
@@ -321,6 +400,58 @@ function App() {
       ) : (
         <>
           <p><strong>Environment:</strong> {env}</p>
+
+          {/* Authentication Status */}
+          {env === "lark" && (
+            <div style={{
+              marginTop: "10px",
+              padding: "15px",
+              background: isAuthenticated ? "#e8f5e9" : "#fff3e0",
+              borderRadius: "8px",
+              border: `2px solid ${isAuthenticated ? "#4caf50" : "#ff9800"}`
+            }}>
+              {isAuthenticated ? (
+                <>
+                  <div style={{ fontSize: "18px", marginBottom: "10px" }}>
+                    ✅ <strong>Authenticated</strong>
+                  </div>
+                  {companyAccount && (
+                    <div style={{ fontSize: "14px" }}>
+                      <div><strong>Company Account ID:</strong> {companyAccount.id}</div>
+                      <div><strong>Lark User:</strong> {companyAccount.lark_name}</div>
+                      <div><strong>Email:</strong> {companyAccount.company_email}</div>
+                      <div style={{ fontSize: "12px", color: "#666", marginTop: "5px" }}>
+                        Linked: {new Date(companyAccount.linked_at).toLocaleString()}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: "16px", marginBottom: "10px" }}>
+                    🔐 <strong>Not Authenticated</strong>
+                  </div>
+                  <button
+                    onClick={simulateLarkAuth}
+                    style={{
+                      padding: "10px 20px",
+                      fontSize: "16px",
+                      background: "#1976d2",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "5px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    🔑 Login with Lark (Demo)
+                  </button>
+                  <div style={{ fontSize: "12px", color: "#666", marginTop: "8px" }}>
+                    Click to simulate Lark SSO authentication
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </>
       )}
 
@@ -473,6 +604,23 @@ function App() {
             <div style={{ fontSize: "12px", color: "#888", marginTop: "5px" }}>
               Native Lark UI notification
             </div>
+          </div>
+
+          <div style={{ marginBottom: "15px" }}>
+            <button
+              onClick={() => callHandler("requestAuthCode")}
+              style={{ margin: "5px", background: "#673ab7", color: "white" }}
+            >
+              🔑 Test tt.requestAuthCode (Real)
+            </button>
+            <div style={{ fontSize: "12px", color: "#888", marginTop: "5px" }}>
+              Attempts to get auth code from Lark
+            </div>
+            {authCode && (
+              <div style={{ marginTop: "10px", padding: "10px", background: "#e1bee7", borderRadius: "5px" }}>
+                <strong>Auth Code:</strong> {authCode}
+              </div>
+            )}
           </div>
         </>
       )}
