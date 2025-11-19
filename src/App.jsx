@@ -26,7 +26,7 @@ function App() {
     const maxAttempts = 10; // 5 seconds total (10 * 500ms)
     let timeoutId = null;
 
-    const checkEnv = () => {
+    const checkEnv = async () => {
       try {
         attempts++;
         log(`Attempt ${attempts}: Checking environment...`);
@@ -39,6 +39,66 @@ function App() {
 
         if (window.tt && typeof window.tt === 'object') {
           log("✅ Feishu SDK (tt) object found");
+
+          // Configure SDK with app credentials from backend
+          if (typeof window.tt.config === 'function') {
+            log("🔧 Fetching SDK config from backend...");
+
+            try {
+              // Fetch config from backend (NEVER put App Secret in frontend!)
+              // In production (Vercel), uses /api route
+              // In development, uses localhost:3001
+              const backendUrl = import.meta.env.PROD
+                ? '' // Relative path for Vercel serverless functions
+                : (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001');
+
+              const configUrl = `${backendUrl}/api/lark-config?url=${encodeURIComponent(window.location.href.split('#')[0])}`;
+
+              log(`📡 Requesting config from: ${import.meta.env.PROD ? '/api/lark-config' : configUrl}`);
+
+              const configResponse = await fetch(configUrl);
+
+              if (!configResponse.ok) {
+                throw new Error(`Backend returned ${configResponse.status}`);
+              }
+
+              const config = await configResponse.json();
+              log("✅ Config received from backend");
+
+              window.tt.config({
+                appId: config.appId,
+                timestamp: config.timestamp,
+                nonceStr: config.nonceStr,
+                signature: config.signature,
+                jsApiList: ['getLocation', 'chooseImage', 'uploadImage', 'previewImage'],
+                onSuccess: (res) => {
+                  log("✅ SDK configured successfully!");
+                  log("✅ You can now use camera and location APIs");
+                  setEnv("lark");
+                },
+                onFail: (err) => {
+                  error("❌ SDK config failed:", JSON.stringify(err));
+                  error("This usually means:");
+                  error("1. Wrong App ID/Secret");
+                  error("2. URL not whitelisted in Lark console");
+                  error("3. Missing permissions in app settings");
+                  setEnv("lark"); // Continue anyway
+                }
+              });
+
+              return; // Don't continue to ready() - config will handle it
+
+            } catch (err) {
+              error("❌ Failed to fetch config from backend:", err.message);
+              error("Make sure:");
+              error("1. Backend server is running (npm run server)");
+              error("2. LARK_APP_ID and LARK_APP_SECRET are set");
+              error("3. Backend URL is correct");
+              log("⚠️ Continuing without config, APIs may not work");
+            }
+          } else {
+            log("⚠️ tt.config not available");
+          }
 
           // Check if ready method exists
           if (typeof window.tt.ready === 'function') {
