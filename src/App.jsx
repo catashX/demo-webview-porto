@@ -24,33 +24,67 @@ function App() {
   useEffect(() => {
     let attempts = 0;
     const maxAttempts = 10; // 5 seconds total (10 * 500ms)
+    let timeoutId = null;
 
     const checkEnv = () => {
-      attempts++;
+      try {
+        attempts++;
+        log(`Attempt ${attempts}: Checking environment...`);
 
-      if (window.flutter_inappwebview) {
-        setEnv("flutter");
-        log("✅ Flutter environment detected");
-      } else if (window.tt) {
-        // Feishu SDK exposes as 'tt' object
-        window.tt.ready(() => {
-          log("✅ Feishu SDK (tt) ready");
-          setEnv("lark");
-        });
-        window.tt.error((err) => {
-          error("❌ Feishu SDK error:", err);
-          setEnv("web"); // Fallback to web on error
-        });
-      } else if (attempts >= maxAttempts) {
-        log("⏱️ SDK detection timeout, defaulting to web environment");
-        setEnv("web");
-      } else {
-        log(`⏳ SDK belum siap, cek lagi... (${attempts}/${maxAttempts})`);
-        setTimeout(checkEnv, 500);
+        if (window.flutter_inappwebview) {
+          setEnv("flutter");
+          log("✅ Flutter environment detected");
+          return; // Stop checking
+        }
+
+        if (window.tt && typeof window.tt === 'object') {
+          log("✅ Feishu SDK (tt) object found");
+
+          // Check if ready method exists
+          if (typeof window.tt.ready === 'function') {
+            window.tt.ready(() => {
+              log("✅ Feishu SDK (tt) ready callback fired");
+              setEnv("lark");
+            });
+          } else {
+            log("⚠️ tt.ready not available, assuming ready");
+            setEnv("lark");
+          }
+
+          // Check if error method exists
+          if (typeof window.tt.error === 'function') {
+            window.tt.error((err) => {
+              error("❌ Feishu SDK error:", err);
+            });
+          }
+
+          return; // Stop checking
+        }
+
+        if (attempts >= maxAttempts) {
+          log("⏱️ SDK detection timeout, defaulting to web environment");
+          setEnv("web");
+          return;
+        }
+
+        // Continue checking
+        log(`⏳ SDK not found yet (${attempts}/${maxAttempts})`);
+        timeoutId = setTimeout(checkEnv, 500);
+
+      } catch (err) {
+        error("💥 Error in environment detection:", err);
+        setEnv("web"); // Fallback to web on any error
       }
     };
 
     checkEnv();
+
+    // Cleanup function
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, []);
 
 
@@ -144,6 +178,26 @@ function App() {
         </>
       )}
 
+      {/* Debug logs at the top for visibility */}
+      <div style={{
+        marginTop: "15px",
+        marginBottom: "20px",
+        background: "#1e1e1e",
+        color: "#0f0",
+        padding: "10px",
+        maxHeight: "300px",
+        overflowY: "scroll",
+        border: "2px solid #0f0",
+        borderRadius: "4px",
+        fontFamily: "monospace",
+        fontSize: "11px"
+      }}>
+        <h3 style={{ color: "#0f0", margin: "0 0 10px 0" }}>🐛 Debug Logs:</h3>
+        <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordWrap: "break-word" }}>
+          {logs.length === 0 ? "No logs yet..." : logs.join("\n")}
+        </pre>
+      </div>
+
       <div style={{ marginBottom: "15px" }}>
         <button onClick={() => callHandler("takePicture")} style={{ margin: "5px" }}>
           Ambil Gambar
@@ -182,11 +236,6 @@ function App() {
           Ambil Battery
         </button>
         {batteryLevel !== null && <div>Battery: {batteryLevel}%</div>}
-      </div>
-
-      <div style={{ marginTop: "20px", background: "#f0f0f0", padding: "10px", maxHeight: "200px", overflowY: "scroll" }}>
-        <h3>Debug Logs:</h3>
-        <pre>{logs.join("\n")}</pre>
       </div>
 
     </div>
