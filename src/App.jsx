@@ -121,43 +121,55 @@ function App() {
         error(err);
       }
     } else if (env === "lark" && window.tt) {
+      // Use standard browser APIs instead of Lark SDK
+      // These work in ANY webview without special authentication!
       try {
         switch (handlerName) {
           case "getLocation":
-            // Try direct API call (H5 apps may not support authorize)
-            log("📍 Calling getLocation directly...");
-            window.tt.getLocation({
-              type: "gcj02",
-              success: (res) => {
-                const loc = { lat: res.latitude, lng: res.longitude };
-                log("✅ getLocation success:", loc);
-                handleResult(handlerName, loc);
-              },
-              fail: (err) => {
-                error("❌ getLocation failed:", err);
-                log("ℹ️ H5 apps may not have access to location API");
-                log("ℹ️ Consider using a Mini Program instead");
-              }
-            });
+            log("📍 Using browser's geolocation API...");
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(
+                (position) => {
+                  const loc = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                  };
+                  log("✅ Location obtained:", loc);
+                  handleResult(handlerName, loc);
+                },
+                (err) => {
+                  error("❌ Geolocation failed:", err.message);
+                  log("ℹ️ User may have denied location permission");
+                },
+                { enableHighAccuracy: true }
+              );
+            } else {
+              error("❌ Geolocation not supported in this browser");
+            }
             break;
 
           case "takePicture":
-            // Try direct API call (H5 apps may not support authorize)
-            log("📸 Calling chooseImage directly...");
-            window.tt.chooseImage({
-              count: 1,
-              sourceType: ["camera", "album"],
-              success: (res) => {
-                const photoUrl = res.tempFilePaths?.[0] || res.apFilePaths?.[0] || "mock_photo_path";
-                log("✅ chooseImage success:", photoUrl);
+            log("📸 Using HTML5 file input for camera...");
+            // Create a hidden file input
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.capture = 'environment'; // Use rear camera
+            input.style.display = 'none';
+
+            input.onchange = (e) => {
+              const file = e.target.files[0];
+              if (file) {
+                // Create object URL for preview
+                const photoUrl = URL.createObjectURL(file);
+                log("✅ Photo captured:", file.name);
                 handleResult(handlerName, photoUrl);
-              },
-              fail: (err) => {
-                error("❌ chooseImage failed:", err);
-                log("ℹ️ H5 apps may not have access to camera API");
-                log("ℹ️ Consider using a Mini Program instead");
               }
-            });
+              document.body.removeChild(input);
+            };
+
+            document.body.appendChild(input);
+            input.click();
             break;
 
           case "toggleFlashlight":
@@ -167,9 +179,18 @@ function App() {
             break;
 
           case "getBatteryLevel":
-            const mockBattery = Math.floor(Math.random() * 100);
-            log("getBatteryLevel simulated:", mockBattery);
-            handleResult(handlerName, { level: mockBattery });
+            log("🔋 Using Battery API...");
+            if (navigator.getBattery) {
+              navigator.getBattery().then((battery) => {
+                const level = Math.floor(battery.level * 100);
+                log("✅ Battery level:", level + "%");
+                handleResult(handlerName, { level });
+              });
+            } else {
+              const mockBattery = Math.floor(Math.random() * 100);
+              log("⚠️ Battery API not available, using mock:", mockBattery);
+              handleResult(handlerName, { level: mockBattery });
+            }
             break;
 
           default:
