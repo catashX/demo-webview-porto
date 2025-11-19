@@ -133,7 +133,7 @@ function App() {
     log(" Calling tt.requestAuthCode() ...");
 
     window.tt.requestAuthCode({
-      appId: process.env.LARK_APP_ID,
+      appId: import.meta.env.VITE_LARK_APP_ID,
       success: (res) => {
         log(`✅ Got REAL auth code: ${res.code}`);
         setAuthCode(res.code);
