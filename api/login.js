@@ -55,15 +55,23 @@ export default async function handler(req, res) {
         });
 
         const tokenData = await tokenRes.json();
+        console.log('Token Data Response:', JSON.stringify(tokenData)); // Debug log
+
         if (tokenData.code !== 0) {
             throw new Error(`Failed to get user_access_token: ${JSON.stringify(tokenData)}`);
+        }
+
+        // Check which token field is present
+        const userAccessToken = tokenData.data.access_token || tokenData.data.user_access_token;
+        if (!userAccessToken) {
+            throw new Error(`No access token found in response: ${JSON.stringify(tokenData.data)}`);
         }
 
         // 3. Get user info
         const userInfoRes = await fetch('https://open.larksuite.com/open-apis/authen/v1/user_info', {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${tokenData.data.user_access_token}`
+                'Authorization': `Bearer ${userAccessToken}`
             }
         });
 
