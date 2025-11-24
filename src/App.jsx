@@ -72,44 +72,49 @@ function App() {
         if (window.tt && typeof window.tt === 'object') {
           log("✅ Feishu SDK (tt) object found");
 
-          // Log available methods for debugging
-          const availableMethods = Object.keys(window.tt).filter(key => typeof window.tt[key] === 'function');
-          log(`Available SDK methods: ${availableMethods.join(', ')}`);
+          // Check if we need to authenticate (Web App) or if it's Mini Program
+          // For Web App, we MUST call tt.config
+          try {
+            log("⚙️ Requesting JSAPI config signature...");
+            const response = await fetch(`/api/lark-config?url=${encodeURIComponent(window.location.href)}`);
+            const data = await response.json();
 
-          // Check SDK version
-          if (window.tt.version) {
-            log(`SDK version: ${window.tt.version}`);
-          }
+            if (data.error) {
+              throw new Error(data.error);
+            }
 
-          // This is a Mini Program SDK (not Web App SDK)
-          // Use tt.authorize() instead of tt.config()
-          log("ℹ️ Detected Mini Program SDK - using authorize() for permissions");
+            log("✅ Got signature, calling tt.config...");
 
-          // Set environment immediately since authorize happens per-API call
-          setEnv("lark");
+            window.tt.config({
+              appId: data.appId,
+              timestamp: data.timestamp,
+              nonceStr: data.nonceStr,
+              signature: data.signature,
+              jsApiList: [
+                'getSystemInfo',
+                'getNetworkType',
+                'chooseChat',
+                'vibrateShort',
+                'setClipboardData',
+                'makePhoneCall',
+                'showToast',
+                'requestAuthCode'
+              ]
+            });
 
-          // No config needed - Mini Program handles auth differently
-          log("✅ Ready to use Mini Program APIs");
-          log("ℹ️ Permissions will be requested when you use camera/location");
-
-          return; // Skip config check
-
-          // Check if ready method exists
-          if (typeof window.tt.ready === 'function') {
             window.tt.ready(() => {
-              log("✅ Feishu SDK (tt) ready callback fired");
+              log("✅ Feishu SDK (tt) Config Ready!");
               setEnv("lark");
             });
-          } else {
-            log("⚠️ tt.ready not available, assuming ready");
-            setEnv("lark");
-          }
 
-          // Check if error method exists
-          if (typeof window.tt.error === 'function') {
             window.tt.error((err) => {
-              error("❌ Feishu SDK error:", err);
+              error("❌ Feishu SDK Config Error:", err);
             });
+
+          } catch (err) {
+            error("❌ Failed to configure Lark SDK:", err);
+            // Fallback to allowing it, maybe it's Mini Program
+            setEnv("lark");
           }
 
           return; // Stop checking
@@ -230,7 +235,7 @@ function App() {
         window.tt.showToast({ title: "Message sent! 📨", icon: "success" });
       }
     } catch (err) {
-      error("❌ Failed to send message:", err);
+      error("❌ Failed to send message:", err.message || JSON.stringify(err));
     }
   };
 
@@ -764,7 +769,8 @@ function App() {
                     log.type === 'success' ? '#b9f6ca' :
                       log.type === 'warning' ? '#ffe57f' : '#e0e0e0',
                   whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
+                  wordBreak: "break-all",
+                  maxWidth: "100%",
                   paddingLeft: "10px"
                 }}>
                   {typeof log.content === 'object' ? (
