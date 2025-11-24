@@ -90,6 +90,13 @@ export default async function handler(req, res) {
         const string = `jsapi_ticket=${jsapiTicket}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
         const signature = crypto.createHash('sha1').update(string).digest('hex');
 
+        console.log('--- JSAPI Signature Debug ---');
+        console.log('URL:', url);
+        console.log('Ticket:', jsapiTicket.substring(0, 10) + '...');
+        console.log('String to sign:', string);
+        console.log('Signature:', signature);
+        console.log('---------------------------');
+
         res.status(200).json({
             appId: process.env.LARK_APP_ID,
             timestamp,

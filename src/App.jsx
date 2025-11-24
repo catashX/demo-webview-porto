@@ -75,8 +75,10 @@ function App() {
           // Check if we need to authenticate (Web App) or if it's Mini Program
           // For Web App, we MUST call tt.config
           try {
-            log("⚙️ Requesting JSAPI config signature...");
-            const response = await fetch(`/api/lark-config?url=${encodeURIComponent(window.location.href)}`);
+            const currentUrl = window.location.href.split('#')[0];
+            log(`⚙️ Requesting JSAPI config signature for: ${currentUrl}`);
+
+            const response = await fetch(`/api/lark-config?url=${encodeURIComponent(currentUrl)}`);
             const data = await response.json();
 
             if (data.error) {
@@ -85,34 +87,39 @@ function App() {
 
             log("✅ Got signature, calling tt.config...");
 
-            window.tt.config({
-              appId: data.appId,
-              timestamp: data.timestamp,
-              nonceStr: data.nonceStr,
-              signature: data.signature,
-              jsApiList: [
-                'getSystemInfo',
-                'getNetworkType',
-                'chooseChat',
-                'vibrateShort',
-                'setClipboardData',
-                'makePhoneCall',
-                'showToast',
-                'requestAuthCode'
-              ]
-            });
+            if (window.tt.config) {
+              window.tt.config({
+                appId: data.appId,
+                timestamp: data.timestamp,
+                nonceStr: data.nonceStr,
+                signature: data.signature,
+                jsApiList: [
+                  'getSystemInfo',
+                  'getNetworkType',
+                  'chooseChat',
+                  'vibrateShort',
+                  'setClipboardData',
+                  'makePhoneCall',
+                  'showToast',
+                  'requestAuthCode'
+                ]
+              });
 
-            window.tt.ready(() => {
-              log("✅ Feishu SDK (tt) Config Ready!");
+              window.tt.ready(() => {
+                log("✅ Feishu SDK (tt) Config Ready!");
+                setEnv("lark");
+              });
+
+              window.tt.error((err) => {
+                error("❌ Feishu SDK Config Error:", err);
+              });
+            } else {
+              log("⚠️ window.tt.config is missing. Skipping JSAPI auth (likely Mini Program).");
               setEnv("lark");
-            });
-
-            window.tt.error((err) => {
-              error("❌ Feishu SDK Config Error:", err);
-            });
+            }
 
           } catch (err) {
-            error("❌ Failed to configure Lark SDK:", err);
+            error("❌ Failed to configure Lark SDK:", err.message || JSON.stringify(err));
             // Fallback to allowing it, maybe it's Mini Program
             setEnv("lark");
           }
