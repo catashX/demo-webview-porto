@@ -195,7 +195,7 @@ function App() {
 
           log("🎉 Login complete!");
         } catch (err) {
-          error("❌ Backend exchange failed:", err);
+          error("❌ Backend exchange failed:", err.message || err);
         }
       },
       fail: (err) => {

@@ -28,6 +28,10 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
+    if (!process.env.LARK_APP_ID || !process.env.LARK_APP_SECRET) {
+        return res.status(500).json({ error: 'Missing LARK_APP_ID or LARK_APP_SECRET environment variables' });
+    }
+
     try {
         const { code } = req.body;
         if (!code) {
