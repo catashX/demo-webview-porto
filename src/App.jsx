@@ -164,7 +164,7 @@ function App() {
         log("⏳ Exchanging code with backend...");
 
         try {
-          const response = await fetch('http://localhost:3001/api/login', {
+          const response = await fetch('/api/login', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -210,15 +210,18 @@ function App() {
 
     log("📤 Sending message...");
     try {
-      const res = await fetch('http://localhost:3001/api/send-message', {
+      const response = await fetch('/api/send-message', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
-          receive_id: companyAccount.lark_user_id,
-          content: "Hello from the React App! 👋 This message was sent via Lark Server API."
+          receive_id: userInfo.open_id,
+          content: 'Hello from React App!',
+          receive_id_type: 'open_id'
         })
       });
-      const data = await res.json();
+      const data = await response.json();
       if (data.error) throw new Error(data.error);
 
       log("✅ Message sent! Check your Lark chat.");
