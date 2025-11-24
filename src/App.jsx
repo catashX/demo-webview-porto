@@ -221,7 +221,7 @@ function App() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          receive_id: userInfo.open_id,
+          receive_id: companyAccount.lark_user_id,
           content: 'Hello from React App!',
           receive_id_type: 'open_id'
         })
@@ -769,12 +769,21 @@ function App() {
                     log.type === 'success' ? '#b9f6ca' :
                       log.type === 'warning' ? '#ffe57f' : '#e0e0e0',
                   whiteSpace: "pre-wrap",
-                  wordBreak: "break-all",
+                  overflowWrap: "anywhere",
+                  wordBreak: "break-word",
                   maxWidth: "100%",
                   paddingLeft: "10px"
                 }}>
                   {typeof log.content === 'object' ? (
-                    <pre style={{ margin: 0, background: "#00000030", padding: "8px", borderRadius: "4px" }}>
+                    <pre style={{
+                      margin: 0,
+                      background: "#00000030",
+                      padding: "8px",
+                      borderRadius: "4px",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      overflowWrap: "anywhere"
+                    }}>
                       {JSON.stringify(log.content, null, 2)}
                     </pre>
                   ) : (
