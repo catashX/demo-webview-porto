@@ -18,6 +18,7 @@ function App() {
   // Auth demo state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [companyAccount, setCompanyAccount] = useState(null);
+  const [selectedChat, setSelectedChat] = useState(null);
 
   const [logs, setLogs] = useState([]);
 
@@ -156,39 +157,46 @@ function App() {
     window.tt.requestAuthCode({
       appId: import.meta.env.VITE_LARK_APP_ID,
       redirect_uri: window.location.href,
-      success: (res) => {
+      success: async (res) => {
         log(`✅ Got REAL auth code: ${res.code}`);
         setAuthCode(res.code);
 
-        log("⏳ Simulating backend exchange...");
+        log("⏳ Exchanging code with backend...");
 
-        // Simulate backend processing the real code
-        setTimeout(() => {
-          const mockLarkUser = {
-            user_id: "ou_real_code_exchanged_" + res.code.substring(0, 6),
-            name: "John Doe (Mock)",
-            email: "john.doe@company.com",
-            avatar: "https://via.placeholder.com/100",
-            mobile: "+1234567890"
-          };
+        try {
+          const response = await fetch('http://localhost:3001/api/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ code: res.code })
+          });
 
-          log("✅ Backend verified code & returned user:", mockLarkUser);
+          const data = await response.json();
+
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          log("✅ Backend verified code & returned user:", data);
 
           const companyUser = {
-            id: 12345,
-            company_email: mockLarkUser.email,
-            lark_user_id: mockLarkUser.user_id,
-            lark_name: mockLarkUser.name,
-            lark_avatar: mockLarkUser.avatar,
+            id: Date.now(), // Mock ID
+            company_email: data.email || "No Email",
+            lark_user_id: data.open_id,
+            lark_name: data.name,
+            lark_avatar: data.avatar_url,
             linked_at: new Date().toISOString()
           };
 
-          // Mark as authenticated with mock data
+          // Mark as authenticated with real data
           setIsAuthenticated(true);
           setCompanyAccount(companyUser);
 
           log("🎉 Login complete!");
-        }, 1000);
+        } catch (err) {
+          error("❌ Backend exchange failed:", err);
+        }
       },
       fail: (err) => {
         error("❌ Auth failed:", err);
@@ -197,6 +205,90 @@ function App() {
     });
   };
 
+  const sendMessage = async () => {
+    if (!companyAccount || !companyAccount.lark_user_id) return;
+
+    log("📤 Sending message...");
+    try {
+      const res = await fetch('http://localhost:3001/api/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          receive_id: companyAccount.lark_user_id,
+          content: "Hello from the React App! 👋 This message was sent via Lark Server API."
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      log("✅ Message sent! Check your Lark chat.");
+      // Show toast if in Lark
+      if (window.tt && window.tt.showToast) {
+        window.tt.showToast({ title: "Message sent! 📨", icon: "success" });
+      }
+    } catch (err) {
+      error("❌ Failed to send message:", err);
+    }
+  };
+
+
+
+
+  const pickChat = () => {
+    log("💬 Picking a chat...");
+    if (window.tt && window.tt.chooseChat) {
+      window.tt.chooseChat({
+        allowCreateGroup: false,
+        multiSelect: false,
+        ignoreSelf: true,
+        selectType: 1, // 0: all, 1: chat, 2: user
+        success: (res) => {
+          log("✅ Chat selected:", res);
+          // Note: The response structure depends on the SDK version, usually res.data or res itself
+          // Assuming res contains the chat info directly or inside data
+          const chat = res.data ? res.data[0] : res[0];
+          if (chat) {
+            setSelectedChat({
+              id: chat.chatId || chat.id,
+              name: chat.name || "Unknown Chat"
+            });
+            log(`✅ Selected Chat ID: ${chat.chatId || chat.id}`);
+          }
+        },
+        fail: (err) => {
+          error("❌ Failed to pick chat:", err);
+        }
+      });
+    } else {
+      error("❌ tt.chooseChat not available");
+    }
+  };
+
+  const sendToChat = async () => {
+    if (!selectedChat) return;
+
+    log(`📤 Sending to Group: ${selectedChat.name}...`);
+    try {
+      const res = await fetch('http://localhost:3001/api/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          receive_id: selectedChat.id,
+          receive_id_type: 'chat_id',
+          content: "Hello Group! 👋 This is a test message from the React App."
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      log("✅ Group message sent!");
+      if (window.tt && window.tt.showToast) {
+        window.tt.showToast({ title: "Group msg sent! 📨", icon: "success" });
+      }
+    } catch (err) {
+      error("❌ Failed to send group message:", err);
+    }
+  };
 
   // Main handler — works for both Flutter & Lark
   const callHandler = async (handlerName, data) => {
@@ -508,6 +600,66 @@ function App() {
                       <div style={{ fontSize: "12px", color: "#666", marginTop: "5px" }}>
                         Linked: {new Date(companyAccount.linked_at).toLocaleString()}
                       </div>
+                      <button
+                        onClick={sendMessage}
+                        style={{
+                          marginTop: "10px",
+                          padding: "8px 16px",
+                          fontSize: "14px",
+                          background: "#009688",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "5px",
+                          cursor: "pointer"
+                        }}
+                      >
+                        📨 Send Me a Message
+                      </button>
+
+                      <hr style={{ margin: "15px 0", borderColor: "#eee" }} />
+
+                      <div style={{ fontSize: "14px", fontWeight: "bold", marginBottom: "10px" }}>
+                        👥 Group Chat Demo
+                      </div>
+
+                      <button
+                        onClick={pickChat}
+                        style={{
+                          padding: "8px 16px",
+                          fontSize: "14px",
+                          background: "#607d8b",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "5px",
+                          cursor: "pointer",
+                          marginRight: "10px"
+                        }}
+                      >
+                        💬 Pick a Chat
+                      </button>
+
+                      {selectedChat && (
+                        <div style={{ marginTop: "10px", padding: "10px", background: "#eceff1", borderRadius: "5px" }}>
+                          <div><strong>Selected:</strong> {selectedChat.name}</div>
+                          <div style={{ fontSize: "10px", color: "#666" }}>ID: {selectedChat.id}</div>
+                          <button
+                            onClick={sendToChat}
+                            style={{
+                              marginTop: "8px",
+                              padding: "6px 12px",
+                              fontSize: "12px",
+                              background: "#ff5722",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "4px",
+                              cursor: "pointer"
+                            }}
+                          >
+                            🚀 Send Hello to Group
+                          </button>
+                        </div>
+                      )}
+
                     </div>
                   )}
                 </>
