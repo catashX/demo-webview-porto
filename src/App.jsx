@@ -71,7 +71,7 @@ function App() {
 
       if (window.tt.config) {
         window.tt.config({
-          appId: data.appId,
+          appId: import.meta.env.VITE_LARK_APP_ID,
           timestamp: data.timestamp,
           nonceStr: data.nonceStr,
           signature: data.signature,
