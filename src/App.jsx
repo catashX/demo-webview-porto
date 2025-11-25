@@ -17,6 +17,7 @@ function App() {
 
   // Auth demo state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [companyAccount, setCompanyAccount] = useState(null);
   const [selectedChat, setSelectedChat] = useState(null);
 
@@ -153,13 +154,24 @@ function App() {
     };
   }, []);
 
+  // Automatic Authentication Effect
+  useEffect(() => {
+    if (env === "lark" && !isAuthenticated && !isLoggingIn) {
+      log("🤖 Auto-triggering Lark authentication...");
+      loginWithRealLark();
+    }
+  }, [env, isAuthenticated, isLoggingIn]);
+
   // Real Lark Authentication
   const loginWithRealLark = () => {
+    if (isLoggingIn) return; // Prevent double calls
+    setIsLoggingIn(true);
     log("🔑 Starting real Lark authentication...");
 
     if (!window.tt || !window.tt.requestAuthCode) {
       error("❌ window.tt.requestAuthCode not available");
       log("ℹ️ Are you running inside Lark?");
+      setIsLoggingIn(false);
       return;
     }
 
@@ -208,11 +220,14 @@ function App() {
           log("🎉 Login complete!");
         } catch (err) {
           error("❌ Backend exchange failed:", err.message || err);
+        } finally {
+          setIsLoggingIn(false);
         }
       },
       fail: (err) => {
         error("❌ Auth failed:", err);
         log("ℹ️ Make sure your app is trusted in Lark Console");
+        setIsLoggingIn(false);
       }
     });
   };
@@ -284,7 +299,7 @@ function App() {
 
     log(`📤 Sending to Group: ${selectedChat.name}...`);
     try {
-      const res = await fetch('http://localhost:3001/api/send-message', {
+      const res = await fetch('/api/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -302,6 +317,142 @@ function App() {
       }
     } catch (err) {
       error("❌ Failed to send group message:", err);
+    }
+  };
+
+  const sendCard = async () => {
+    if (!companyAccount || !companyAccount.lark_user_id) return;
+
+    log("🃏 Sending Interactive Card...");
+    try {
+      const cardContent = {
+        config: {
+          wide_screen_mode: true
+        },
+        header: {
+          title: {
+            tag: "plain_text",
+            content: "✨ Interactive Card Demo"
+          },
+          template: "blue"
+        },
+        elements: [
+          {
+            tag: "div",
+            text: {
+              tag: "lark_md",
+              content: "**Hello!** This is a card sent from the React App."
+            }
+          },
+          {
+            tag: "action",
+            actions: [
+              {
+                tag: "button",
+                text: {
+                  tag: "plain_text",
+                  content: "Primary Button"
+                },
+                type: "primary",
+                url: "https://www.google.com"
+              },
+              {
+                tag: "button",
+                text: {
+                  tag: "plain_text",
+                  content: "Secondary Button"
+                },
+                type: "default"
+              }
+            ]
+          }
+        ]
+      };
+
+      const response = await fetch('/api/send-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          receive_id: companyAccount.lark_user_id,
+          card_content: cardContent,
+          receive_id_type: 'open_id'
+        })
+      });
+
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+
+      log("✅ Card sent successfully!");
+      if (window.tt && window.tt.showToast) {
+        window.tt.showToast({ title: "Card sent! 🃏", icon: "success" });
+      }
+    } catch (err) {
+      error("❌ Failed to send card:", err.message || JSON.stringify(err));
+    }
+  };
+
+  const sendImage = async () => {
+    if (!companyAccount || !companyAccount.lark_user_id) {
+      error("❌ Not logged in");
+      return;
+    }
+    if (!picturePath) {
+      error("❌ No picture taken yet! Take a picture first.");
+      return;
+    }
+
+    log("📤 Uploading & Sending Image...");
+    try {
+      // 1. Fetch the blob from the object URL
+      const blobRes = await fetch(picturePath);
+      const blob = await blobRes.blob();
+
+      // Convert blob to base64 for upload
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onloadend = async () => {
+        const base64data = reader.result;
+
+        // 2. Upload Image
+        log("⏳ Uploading image to Lark...");
+        const uploadRes = await fetch('/api/upload-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image_base64: base64data,
+            image_type: 'message'
+          })
+        });
+
+        const uploadData = await uploadRes.json();
+        if (uploadData.error) throw new Error(uploadData.error);
+
+        const imageKey = uploadData.image_key;
+        log(`✅ Image uploaded! Key: ${imageKey}`);
+
+        // 3. Send Image Message
+        log("🚀 Sending image message...");
+        const sendRes = await fetch('/api/send-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            receive_id: companyAccount.lark_user_id,
+            image_key: imageKey,
+            receive_id_type: 'open_id'
+          })
+        });
+
+        const sendData = await sendRes.json();
+        if (sendData.error) throw new Error(sendData.error);
+
+        log("✅ Image sent successfully!");
+        if (window.tt && window.tt.showToast) {
+          window.tt.showToast({ title: "Image sent! 🖼️", icon: "success" });
+        }
+      };
+
+    } catch (err) {
+      error("❌ Failed to send image:", err.message || JSON.stringify(err));
     }
   };
 
@@ -629,6 +780,40 @@ function App() {
                         }}
                       >
                         📨 Send Me a Message
+                      </button>
+
+                      <button
+                        onClick={sendCard}
+                        style={{
+                          marginTop: "10px",
+                          marginLeft: "10px",
+                          padding: "8px 16px",
+                          fontSize: "14px",
+                          background: "#3f51b5",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "5px",
+                          cursor: "pointer"
+                        }}
+                      >
+                        🃏 Send Card
+                      </button>
+
+                      <button
+                        onClick={sendImage}
+                        style={{
+                          marginTop: "10px",
+                          marginLeft: "10px",
+                          padding: "8px 16px",
+                          fontSize: "14px",
+                          background: "#9c27b0",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "5px",
+                          cursor: "pointer"
+                        }}
+                      >
+                        🖼️ Send Image
                       </button>
 
                       <hr style={{ margin: "15px 0", borderColor: "#eee" }} />
