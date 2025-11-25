@@ -278,12 +278,87 @@ function App() {
     }
   };
 
-
-
-
-  const pickChat = () => {
+  const pickChat = async () => {
     log("💬 Picking a chat...");
+
+    // Debug: Log URL information
+    const currentFullUrl = window.location.href;
+    const currentUrlNoHash = window.location.href.split('#')[0];
+    log(`🔍 Current URL (full): ${currentFullUrl}`);
+    log(`🔍 Current URL (no hash): ${currentUrlNoHash}`);
+
+    // Force a fresh config right before calling chooseChat
+    log("🔄 Refreshing JSAPI config before chooseChat...");
+    try {
+      const response = await fetch(`/api/lark-config?url=${encodeURIComponent(currentUrlNoHash)}`);
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      log("✅ Got fresh signature:", data.signature);
+
+      if (window.tt.config) {
+        window.tt.config({
+          appId: data.appId,
+          timestamp: data.timestamp,
+          nonceStr: data.nonceStr,
+          signature: data.signature,
+          jsApiList: [
+            'getSystemInfo',
+            'getNetworkType',
+            'chooseChat',
+            'vibrateShort',
+            'setClipboardData',
+            'makePhoneCall',
+            'showToast',
+            'requestAuthCode'
+          ]
+        });
+
+        // Wait for ready event
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Config timeout')), 5000);
+
+          window.tt.ready(() => {
+            clearTimeout(timeout);
+            log("✅ Fresh config ready!");
+            resolve();
+          });
+
+          window.tt.error((err) => {
+            clearTimeout(timeout);
+            error("❌ Fresh config failed:", err);
+            reject(err);
+          });
+        });
+      }
+    } catch (err) {
+      error("❌ Failed to refresh config:", err.message);
+      log("⚠️ Proceeding anyway with existing config...");
+    }
+
     if (window.tt && window.tt.chooseChat) {
+      // First check if the API is available
+      if (window.tt.checkJsApi) {
+        window.tt.checkJsApi({
+          jsApiList: ['chooseChat'],
+          success: (res) => {
+            log("🔍 chooseChat API check:", res);
+            if (res.checkResult && res.checkResult.chooseChat === false) {
+              error("❌ chooseChat is not available in this environment");
+              log("ℹ️ This API may only work in Lark Mini Programs or specific webview contexts");
+              return;
+            }
+          },
+          fail: (err) => {
+            log("⚠️ checkJsApi failed:", err);
+          }
+        });
+      }
+
+      log("📞 Calling tt.chooseChat...");
       window.tt.chooseChat({
         allowCreateGroup: false,
         multiSelect: false,
@@ -304,12 +379,27 @@ function App() {
         },
         fail: (err) => {
           error("❌ Failed to pick chat:", err);
+          log(`⚠️ Error code: ${err.errCode || 'unknown'}`);
+          log(`⚠️ Error message: ${err.errMsg || JSON.stringify(err)}`);
+
+          if (err.errCode === 100001) {
+            log("🔴 Error 100001 = Invalid Authentication");
+            log("ℹ️ Possible causes:");
+            log("  1. URL mismatch between tt.config signature and current page");
+            log("  2. JSAPI signature expired or invalid");
+            log("  3. chooseChat not properly included in jsApiList");
+            log("  4. This API may not be available in H5 webviews (only Mini Programs)");
+            log("  5. App may need additional permissions in Lark Console");
+            log("ℹ️ Try refreshing the page or clearing Lark's cache");
+          }
         }
       });
     } else {
       error("❌ tt.chooseChat not available");
+      log("ℹ️ Make sure you're running inside Lark/Feishu");
     }
   };
+
 
   const sendToChat = async () => {
     if (!selectedChat) return;
