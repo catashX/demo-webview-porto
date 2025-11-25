@@ -87,6 +87,7 @@ function App() {
             }
 
             log("✅ Got signature, calling tt.config...");
+            log(`Config params: appId=${data.appId}, timestamp=${data.timestamp}, nonceStr=${data.nonceStr}, signature=${data.signature}`);
 
             if (window.tt.config) {
               window.tt.config({
@@ -112,7 +113,8 @@ function App() {
               });
 
               window.tt.error((err) => {
-                error("❌ Feishu SDK Config Error:", err);
+                error("❌ Feishu SDK Config Error:", JSON.stringify(err));
+                log(`⚠️ Config failed for URL: ${currentUrl}`);
               });
             } else {
               log("⚠️ window.tt.config is missing. Skipping JSAPI auth (likely Mini Program).");

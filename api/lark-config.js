@@ -86,16 +86,15 @@ export default async function handler(req, res) {
         const timestamp = Math.floor(Date.now() / 1000);
         const nonceStr = crypto.randomBytes(16).toString('hex');
 
-        // Generate signature
+        // Generate signature according to Lark documentation
         const string = `jsapi_ticket=${jsapiTicket}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
         const signature = crypto.createHash('sha1').update(string).digest('hex');
 
-        console.log('--- JSAPI Signature Debug ---');
+        console.log('--- Vercel Config Request ---');
         console.log('URL:', url);
-        console.log('Ticket:', jsapiTicket.substring(0, 10) + '...');
         console.log('String to sign:', string);
         console.log('Signature:', signature);
-        console.log('---------------------------');
+        console.log('-----------------------------');
 
         res.status(200).json({
             appId: process.env.LARK_APP_ID,

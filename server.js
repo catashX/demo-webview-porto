@@ -76,6 +76,12 @@ app.get('/api/lark-config', async (req, res) => {
         const string = `jsapi_ticket=${jsapiTicket}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
         const signature = crypto.createHash('sha1').update(string).digest('hex');
 
+        console.log('--- Config Request ---');
+        console.log('URL:', url);
+        console.log('String to sign:', string);
+        console.log('Signature:', signature);
+        console.log('----------------------');
+
         res.json({
             appId: LARK_APP_ID,
             timestamp,
