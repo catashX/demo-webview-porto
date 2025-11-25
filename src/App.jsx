@@ -14,6 +14,7 @@ function App() {
   const [networkType, setNetworkType] = useState(null);
   const [clipboardContent, setClipboardContent] = useState(null);
   const [accelerometerData, setAccelerometerData] = useState(null);
+  const [configStatus, setConfigStatus] = useState('pending'); // pending, success, error
 
   // Auth demo state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -52,6 +53,74 @@ function App() {
     addLog(message, 'error');
   };
 
+  const configureLark = async () => {
+    try {
+      setConfigStatus('pending');
+      const currentUrl = window.location.href.split('#')[0];
+      log(`⚙️ Requesting JSAPI config signature for: ${currentUrl}`);
+
+      const response = await fetch(`/api/lark-config?url=${encodeURIComponent(currentUrl)}`);
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      log("✅ Got signature, calling tt.config...");
+      log(`Config params: appId=${data.appId}, timestamp=${data.timestamp}, nonceStr=${data.nonceStr}, signature=${data.signature}`);
+
+      if (window.tt.config) {
+        window.tt.config({
+          appId: data.appId,
+          timestamp: data.timestamp,
+          nonceStr: data.nonceStr,
+          signature: data.signature,
+          jsApiList: [
+            'getSystemInfo',
+            'getNetworkType',
+            'chooseChat',
+            'vibrateShort',
+            'setClipboardData',
+            'makePhoneCall',
+            'showToast',
+            'requestAuthCode'
+          ]
+        });
+
+        window.tt.ready(() => {
+          log("✅ Feishu SDK (tt) Config Ready!");
+          setConfigStatus('success');
+          setEnv("lark");
+
+          // Check if chooseChat is actually available
+          if (window.tt.checkJsApi) {
+            window.tt.checkJsApi({
+              jsApiList: ['chooseChat'],
+              success: (res) => {
+                log("🔍 checkJsApi result:", res);
+              }
+            });
+          }
+        });
+
+        window.tt.error((err) => {
+          error("❌ Feishu SDK Config Error:", JSON.stringify(err));
+          log(`⚠️ Config failed for URL: ${currentUrl}`);
+          setConfigStatus('error');
+        });
+      } else {
+        log("⚠️ window.tt.config is missing. Skipping JSAPI auth (likely Mini Program).");
+        setEnv("lark");
+        setConfigStatus('success'); // Assume success for Mini Program
+      }
+
+    } catch (err) {
+      error("❌ Failed to configure Lark SDK:", err.message || JSON.stringify(err));
+      // Fallback to allowing it, maybe it's Mini Program
+      setEnv("lark");
+      setConfigStatus('error');
+    }
+  };
 
   // Detect environment
   useEffect(() => {
@@ -72,61 +141,7 @@ function App() {
 
         if (window.tt && typeof window.tt === 'object') {
           log("✅ Feishu SDK (tt) object found");
-
-          // Check if we need to authenticate (Web App) or if it's Mini Program
-          // For Web App, we MUST call tt.config
-          try {
-            const currentUrl = window.location.href.split('#')[0];
-            log(`⚙️ Requesting JSAPI config signature for: ${currentUrl}`);
-
-            const response = await fetch(`/api/lark-config?url=${encodeURIComponent(currentUrl)}`);
-            const data = await response.json();
-
-            if (data.error) {
-              throw new Error(data.error);
-            }
-
-            log("✅ Got signature, calling tt.config...");
-            log(`Config params: appId=${data.appId}, timestamp=${data.timestamp}, nonceStr=${data.nonceStr}, signature=${data.signature}`);
-
-            if (window.tt.config) {
-              window.tt.config({
-                appId: data.appId,
-                timestamp: data.timestamp,
-                nonceStr: data.nonceStr,
-                signature: data.signature,
-                jsApiList: [
-                  'getSystemInfo',
-                  'getNetworkType',
-                  'chooseChat',
-                  'vibrateShort',
-                  'setClipboardData',
-                  'makePhoneCall',
-                  'showToast',
-                  'requestAuthCode'
-                ]
-              });
-
-              window.tt.ready(() => {
-                log("✅ Feishu SDK (tt) Config Ready!");
-                setEnv("lark");
-              });
-
-              window.tt.error((err) => {
-                error("❌ Feishu SDK Config Error:", JSON.stringify(err));
-                log(`⚠️ Config failed for URL: ${currentUrl}`);
-              });
-            } else {
-              log("⚠️ window.tt.config is missing. Skipping JSAPI auth (likely Mini Program).");
-              setEnv("lark");
-            }
-
-          } catch (err) {
-            error("❌ Failed to configure Lark SDK:", err.message || JSON.stringify(err));
-            // Fallback to allowing it, maybe it's Mini Program
-            setEnv("lark");
-          }
-
+          configureLark();
           return; // Stop checking
         }
 
@@ -158,11 +173,11 @@ function App() {
 
   // Automatic Authentication Effect
   useEffect(() => {
-    if (env === "lark" && !isAuthenticated && !isLoggingIn) {
+    if (env === "lark" && !isAuthenticated && !isLoggingIn && configStatus === 'success') {
       log("🤖 Auto-triggering Lark authentication...");
       loginWithRealLark();
     }
-  }, [env, isAuthenticated, isLoggingIn]);
+  }, [env, isAuthenticated, isLoggingIn, configStatus]);
 
   // Real Lark Authentication
   const loginWithRealLark = () => {
@@ -755,6 +770,38 @@ function App() {
               borderRadius: "8px",
               border: `2px solid ${isAuthenticated ? "#4caf50" : "#ff9800"}`
             }}>
+              {/* Config Status Indicator */}
+              <div style={{
+                marginBottom: "10px",
+                padding: "5px 10px",
+                background: configStatus === 'success' ? '#e8f5e9' : configStatus === 'error' ? '#ffebee' : '#e3f2fd',
+                borderRadius: "4px",
+                fontSize: "12px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <span>
+                  Config Status: <strong>{configStatus.toUpperCase()}</strong>
+                </span>
+                {configStatus === 'error' && (
+                  <button
+                    onClick={configureLark}
+                    style={{
+                      padding: "2px 8px",
+                      fontSize: "10px",
+                      background: "#f44336",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "3px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Retry Config
+                  </button>
+                )}
+              </div>
+
               {isAuthenticated ? (
                 <>
                   <div style={{ fontSize: "18px", marginBottom: "10px" }}>
